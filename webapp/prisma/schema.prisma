@@ -1,0 +1,66 @@
+// Prisma schema for Personal KYC Vault MVP
+// Step 1: Owner vault + encryption + upload/list/replace/download
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User profiles (app-specific fields, linked to Supabase Auth user id)
+model UserProfile {
+  id        String   @id @default(uuid())
+  userId    String   @unique // Supabase Auth user id
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vault Vault?
+
+  @@map("user_profiles")
+}
+
+// Vaults (one per owner)
+model Vault {
+  id         String   @id @default(uuid())
+  ownerId    String   @unique
+  kdfSalt    String   // Base64-encoded random salt for Argon2id
+  kdfParams  Json     // { memory, time, parallelism } for consistent derivation
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  owner      UserProfile @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  documents  Document[]
+
+  @@map("vaults")
+}
+
+// Document types enum (MVP: ID, ProofOfAddress, SourceOfWealth)
+enum DocumentType {
+  ID
+  ProofOfAddress
+  SourceOfWealth
+}
+
+// Documents (encrypted ciphertext stored in object storage)
+model Document {
+  id                    String       @id @default(uuid())
+  vaultId               String
+  docType               DocumentType
+  storagePath           String       // Path in object storage (e.g., vaults/{vaultId}/{docType}/{id}.bin)
+  ciphertextChecksum    String       // SHA-256 hash of ciphertext blob
+  size                  Int          // Size in bytes
+  filename              String       // Original filename
+  uploadedAt            DateTime     @default(now())
+  lastUpdatedBy         String       // User id
+  encryptedDekForOwner  String       // Base64-encoded: DEK encrypted with KEK (AES-GCM)
+  dekNonce              String       // Base64-encoded: nonce/IV for DEK wrapping
+
+  vault                 Vault        @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+
+  @@unique([vaultId, docType]) // Only one document per type per vault
+  @@map("documents")
+}
+
