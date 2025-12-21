@@ -47,26 +47,48 @@ describe('client-crypto', () => {
     it('should encrypt and decrypt a file correctly', async () => {
       const { kdfSalt } = await initializeVault()
       const kek = await unlockVault(testPassword, kdfSalt, DEFAULT_KDF_PARAMS)
+      
+      // Verify KEK is valid
+      expect(kek).toBeDefined()
+      expect(kek.length).toBe(32)
 
       // Create a test file
       const fileContent = 'Hello, World! This is a test file.'
       const file = new File([fileContent], 'test.txt', { type: 'text/plain' })
+      
+      // Verify file can be read
+      const fileBuffer = await file.arrayBuffer()
+      expect(fileBuffer.byteLength).toBeGreaterThan(0)
 
       // Encrypt
-      const encrypted = await encryptFileForUpload(file, kek)
+      let encrypted
+      try {
+        encrypted = await encryptFileForUpload(file, kek)
+      } catch (error) {
+        console.error('Encryption error:', error)
+        throw error
+      }
+      
       expect(encrypted.ciphertext).toBeDefined()
       expect(encrypted.encryptedDekForOwner).toBeDefined()
       expect(encrypted.dekNonce).toBeDefined()
       expect(encrypted.ciphertextChecksum).toBeDefined()
 
-      // Decrypt
-      const ciphertextBase64 = Buffer.from(encrypted.ciphertext).toString('base64')
-      const decrypted = await decryptFileForDownload(
-        ciphertextBase64,
-        encrypted.encryptedDekForOwner,
-        encrypted.dekNonce,
-        kek
-      )
+      // Decrypt - use the base64 conversion utility from the library
+      const { uint8ArrayToBase64 } = require('@/lib/crypto/vault-crypto')
+      const ciphertextBase64 = uint8ArrayToBase64(encrypted.ciphertext)
+      let decrypted
+      try {
+        decrypted = await decryptFileForDownload(
+          ciphertextBase64,
+          encrypted.encryptedDekForOwner,
+          encrypted.dekNonce,
+          kek
+        )
+      } catch (error) {
+        console.error('Decryption error:', error)
+        throw error
+      }
 
       // Verify content matches
       const decryptedText = new TextDecoder().decode(decrypted)

@@ -116,9 +116,10 @@ export async function decryptFileForDownload(
   const dekNonce = base64ToUint8Array(dekNonceBase64)
 
   // Extract encrypted DEK components
-  // Format: [encryptedDek (32 bytes)][authTag (16 bytes)]
-  const encryptedDek = encryptedDekWithMetadata.slice(0, -16)
-  const dekAuthTag = encryptedDekWithMetadata.slice(-16)
+  // Format: [encryptedDek (32 bytes)][nonce (12 bytes)][authTag (16 bytes)]
+  // Note: nonce is stored separately in dekNonce parameter, so we extract:
+  const encryptedDek = encryptedDekWithMetadata.slice(0, -(12 + 16)) // Everything except nonce + authTag
+  const dekAuthTag = encryptedDekWithMetadata.slice(-16) // Last 16 bytes = authTag
 
   // Decrypt DEK
   const dek = await decryptDek(
