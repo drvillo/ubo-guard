@@ -24,7 +24,7 @@ export default function VaultPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        router.push('/(auth)/sign-in')
+        router.push('/sign-in')
         return
       }
 
@@ -77,7 +77,7 @@ export default function VaultPage() {
 
   async function handleSignOut() {
     await supabase.auth.signOut()
-    router.push('/(auth)/sign-in')
+    router.push('/sign-in')
   }
 
   if (vaultStatus === 'loading') {
