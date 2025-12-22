@@ -38,7 +38,9 @@ export function DocumentList({ documents, kek, onDownloadComplete }: DocumentLis
       )
 
       // Step 4: Create download link
-      const blob = new Blob([plaintext], { type: 'application/octet-stream' })
+      // Create a new Uint8Array to ensure proper ArrayBuffer type
+      const plaintextArray = new Uint8Array(plaintext)
+      const blob = new Blob([plaintextArray], { type: 'application/octet-stream' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url

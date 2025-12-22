@@ -2,40 +2,40 @@
  * Unit tests for vault initialization API
  */
 
+import { vi } from 'vitest'
 import { POST } from '@/app/api/vault/init/route'
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
+import { createServerClient } from '@/lib/supabase/server'
 
 // Mock dependencies
-jest.mock('@/lib/supabase/server', () => ({
-  createServerClient: jest.fn(),
+vi.mock('@/lib/supabase/server', () => ({
+  createServerClient: vi.fn(),
 }))
 
-jest.mock('@/lib/db/prisma', () => ({
+vi.mock('@/lib/db/prisma', () => ({
   prisma: {
     userProfile: {
-      findUnique: jest.fn(),
-      create: jest.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
     },
     vault: {
-      findUnique: jest.fn(),
-      create: jest.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
     },
   },
 }))
 
-const { createServerClient } = require('@/lib/supabase/server')
-
 describe('/api/vault/init', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it('should initialize vault successfully', async () => {
     const mockUser = { id: 'user-123' }
     createServerClient.mockResolvedValue({
       auth: {
-        getUser: jest.fn().mockResolvedValue({
+        getUser: vi.fn().mockResolvedValue({
           data: { user: mockUser },
           error: null,
         }),
@@ -75,7 +75,7 @@ describe('/api/vault/init', () => {
   it('should return 401 if user is not authenticated', async () => {
     createServerClient.mockResolvedValue({
       auth: {
-        getUser: jest.fn().mockResolvedValue({
+        getUser: vi.fn().mockResolvedValue({
           data: { user: null },
           error: new Error('Not authenticated'),
         }),
@@ -98,7 +98,7 @@ describe('/api/vault/init', () => {
     const mockUser = { id: 'user-123' }
     createServerClient.mockResolvedValue({
       auth: {
-        getUser: jest.fn().mockResolvedValue({
+        getUser: vi.fn().mockResolvedValue({
           data: { user: mockUser },
           error: null,
         }),
@@ -125,7 +125,7 @@ describe('/api/vault/init', () => {
     const mockUser = { id: 'user-123' }
     createServerClient.mockResolvedValue({
       auth: {
-        getUser: jest.fn().mockResolvedValue({
+        getUser: vi.fn().mockResolvedValue({
           data: { user: mockUser },
           error: null,
         }),

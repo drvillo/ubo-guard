@@ -9,6 +9,7 @@ import {
   decryptFileForDownload,
   DEFAULT_KDF_PARAMS,
 } from '@/lib/crypto/client-crypto'
+import { uint8ArrayToBase64 } from '@/lib/crypto/vault-crypto'
 
 describe('client-crypto', () => {
   const testPassword = 'test-password-12345'
@@ -75,7 +76,6 @@ describe('client-crypto', () => {
       expect(encrypted.ciphertextChecksum).toBeDefined()
 
       // Decrypt - use the base64 conversion utility from the library
-      const { uint8ArrayToBase64 } = require('@/lib/crypto/vault-crypto')
       const ciphertextBase64 = uint8ArrayToBase64(encrypted.ciphertext)
       let decrypted
       try {
@@ -103,7 +103,7 @@ describe('client-crypto', () => {
       const file = new File(['test content'], 'test.txt', { type: 'text/plain' })
       const encrypted = await encryptFileForUpload(file, kek1)
 
-      const ciphertextBase64 = Buffer.from(encrypted.ciphertext).toString('base64')
+      const ciphertextBase64 = uint8ArrayToBase64(encrypted.ciphertext)
       await expect(
         decryptFileForDownload(ciphertextBase64, encrypted.encryptedDekForOwner, encrypted.dekNonce, kek2)
       ).rejects.toThrow()

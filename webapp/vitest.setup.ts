@@ -1,5 +1,5 @@
 // Learn more: https://github.com/testing-library/jest-dom
-import '@testing-library/jest-dom'
+import '@testing-library/jest-dom/vitest'
 
 // Polyfill Web APIs for Next.js server code in Node.js test environment
 if (typeof Request === 'undefined') {

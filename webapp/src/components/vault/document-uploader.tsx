@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { encryptFileForUpload } from '@/lib/crypto/client-crypto'
+import { uint8ArrayToBase64 } from '@/lib/crypto/vault-crypto'
 import { uploadCiphertext } from '@/lib/storage/supabase-storage'
 import type { DocumentType } from '@/types/documents'
 
@@ -55,7 +56,7 @@ export function DocumentUploader({ kek, onUploadComplete }: DocumentUploaderProp
       // Step 3: Upload ciphertext to storage
       // Note: In a real implementation, you might want to use signed URLs for direct upload
       // For MVP, we'll upload via API
-      const ciphertextBase64 = Buffer.from(ciphertext).toString('base64')
+      const ciphertextBase64 = uint8ArrayToBase64(ciphertext)
       const uploadResponse = await fetch('/api/storage/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

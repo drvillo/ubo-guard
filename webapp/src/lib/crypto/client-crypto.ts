@@ -21,10 +21,12 @@ import {
 
 /**
  * Default KDF parameters for Argon2id
+ * Note: Time cost is increased (12 vs 3) to compensate for slower JS implementation
+ * compared to WASM. This maintains similar brute-force resistance.
  */
 export const DEFAULT_KDF_PARAMS: KdfParams = {
   memory: 65536, // 64 MB
-  time: 3, // 3 iterations
+  time: 12, // 12 iterations (increased from 3 to compensate for JS performance)
   parallelism: 4, // 4 threads
 }
 

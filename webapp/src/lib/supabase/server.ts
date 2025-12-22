@@ -13,14 +13,23 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export async function createServerClient() {
   const cookieStore = await cookies()
   return createClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll()
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          cookieStore.set(name, value, options)
-        })
+    auth: {
+      storage: {
+        getItem: (key: string) => {
+          const cookie = cookieStore.get(key)
+          return cookie?.value ?? null
+        },
+        setItem: (key: string, value: string) => {
+          cookieStore.set(key, value, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+          })
+        },
+        removeItem: (key: string) => {
+          cookieStore.delete(key)
+        },
       },
     },
   })
