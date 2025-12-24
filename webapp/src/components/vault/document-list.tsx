@@ -18,13 +18,17 @@ export function DocumentList({ documents, kek, onDownloadComplete }: DocumentLis
 
     try {
       // Step 1: Get download info (crypto metadata)
-      const infoResponse = await fetch(`/api/documents/${doc.id}/download-info`)
+      const infoResponse = await fetch(`/api/documents/${doc.id}/download-info`, {
+        credentials: 'include',
+      })
       if (!infoResponse.ok) throw new Error('Failed to get download info')
 
       const downloadInfo = await infoResponse.json()
 
       // Step 2: Get ciphertext
-      const ciphertextResponse = await fetch(`/api/documents/${doc.id}/ciphertext`)
+      const ciphertextResponse = await fetch(`/api/documents/${doc.id}/ciphertext`, {
+        credentials: 'include',
+      })
       if (!ciphertextResponse.ok) throw new Error('Failed to download ciphertext')
 
       const { ciphertext: ciphertextBase64 } = await ciphertextResponse.json()

@@ -35,6 +35,7 @@ export default function VaultSetupPage() {
       const response = await fetch('/api/vault/init', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ kdfSalt, kdfParams }),
       })
 

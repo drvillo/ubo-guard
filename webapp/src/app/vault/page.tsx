@@ -20,6 +20,12 @@ export default function VaultPage() {
     checkVaultStatus()
   }, [])
 
+  useEffect(() => {
+    if (vaultStatus === 'needs-setup') {
+      router.push('/vault/setup')
+    }
+  }, [vaultStatus, router])
+
   async function checkVaultStatus() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -29,7 +35,9 @@ export default function VaultPage() {
       }
 
       // Check if vault exists
-      const response = await fetch('/api/vault/status')
+      const response = await fetch('/api/vault/status', {
+        credentials: 'include',
+      })
       if (response.status === 404) {
         setVaultStatus('needs-setup')
         return
@@ -66,7 +74,9 @@ export default function VaultPage() {
 
   async function loadDocuments() {
     try {
-      const response = await fetch('/api/documents')
+      const response = await fetch('/api/documents', {
+        credentials: 'include',
+      })
       if (!response.ok) throw new Error('Failed to load documents')
       const data = await response.json()
       setDocuments(data.documents || [])
@@ -85,8 +95,7 @@ export default function VaultPage() {
   }
 
   if (vaultStatus === 'needs-setup') {
-    router.push('/vault/setup')
-    return null
+    return <div className="flex min-h-screen items-center justify-center">Redirecting to setup...</div>
   }
 
   if (vaultStatus === 'needs-unlock') {

@@ -35,6 +35,7 @@ export function DocumentUploader({ kek, onUploadComplete }: DocumentUploaderProp
       const prepareResponse = await fetch('/api/documents/prepare-upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           docType: selectedDocType,
           filename: file.name,
@@ -60,6 +61,7 @@ export function DocumentUploader({ kek, onUploadComplete }: DocumentUploaderProp
       const uploadResponse = await fetch('/api/storage/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           path: storagePath,
           ciphertext: ciphertextBase64,
@@ -74,6 +76,7 @@ export function DocumentUploader({ kek, onUploadComplete }: DocumentUploaderProp
       const commitResponse = await fetch('/api/documents/commit-upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           docId,
           docType: selectedDocType,

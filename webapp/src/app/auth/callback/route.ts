@@ -7,7 +7,12 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const supabase = await createServerClient()
-    await supabase.auth.exchangeCodeForSession(code)
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+    
+    if (error) {
+      console.error('Error exchanging code for session:', error)
+      return NextResponse.redirect(new URL('/sign-in?error=auth_failed', requestUrl.origin))
+    }
   }
 
   // Redirect to vault setup or vault page
