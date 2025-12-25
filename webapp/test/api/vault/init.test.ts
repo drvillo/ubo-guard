@@ -2,7 +2,7 @@
  * Unit tests for vault initialization API
  */
 
-import { vi } from 'vitest'
+import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { POST } from '@/app/api/vault/init/route'
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db/prisma'

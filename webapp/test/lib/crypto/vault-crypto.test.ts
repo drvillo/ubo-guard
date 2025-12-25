@@ -2,6 +2,7 @@
  * Unit tests for vault crypto utilities
  */
 
+import { describe, it, expect } from 'vitest'
 import {
   generateSalt,
   generateDek,
