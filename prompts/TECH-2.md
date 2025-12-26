@@ -308,7 +308,7 @@ Record at minimum:
 ### 9.1 MVP hosting
 - **App hosting**: Vercel (fastest path for Next.js)
 - **Database + auth + storage**: Supabase managed
-- **Email**: Mailgun
+- **Email**: Mailtrap via SMTPM
 
 ### 9.2 Private cloud migration path
 - App: build and deploy as a **Docker image** (Next.js standalone output)
@@ -327,7 +327,7 @@ Record at minimum:
 ## 10. Third-Party Services
 
 ### 10.1 Email
-- **Mailgun** (transactional email for invites, vendor OTP, and vendor secret delivery)
+- **Mailtrap** (transactional email for invites, vendor OTP, and vendor secret delivery).
 
 ### 10.2 Payments (optional, when monetizing)
 - **Stripe** for subscriptions/invoicing
