@@ -172,3 +172,4 @@ Verify that users can set up a vault with a password, that password validation w
 - The password is stored in sessionStorage temporarily (for auto-unlock), but this is implementation detail
 - Ensure password meets minimum 12 character requirement
 
+

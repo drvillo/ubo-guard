@@ -232,3 +232,4 @@ Tools for checksum calculation:
 - Windows: `certutil -hashfile <file> SHA256` in command prompt
 - Linux: `md5sum` or `sha256sum` in terminal
 
+

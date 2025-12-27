@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server'
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
+  const redirect = requestUrl.searchParams.get('redirect')
 
   if (code) {
     const supabase = await createServerClient()
@@ -15,6 +16,11 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Redirect to the specified URL or default to vault
+  if (redirect) {
+    return NextResponse.redirect(new URL(redirect, requestUrl.origin))
+  }
+  
   // Redirect to vault setup or vault page
   return NextResponse.redirect(new URL('/vault', requestUrl.origin))
 }

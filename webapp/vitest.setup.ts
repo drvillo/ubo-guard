@@ -19,3 +19,21 @@ if (typeof globalThis.crypto === 'undefined') {
 // If File is undefined (older Node versions), we'd need a polyfill, but for now
 // we rely on Node.js's native File implementation
 
+// Suppress console.error for expected authorization errors during tests
+// These errors are intentionally triggered to test error handling
+const originalConsoleError = console.error
+console.error = (...args: any[]) => {
+  const message = args[0]?.toString() || ''
+  // Only suppress expected authorization errors that are tested
+  if (
+    message.includes('Error creating invite') ||
+    message.includes('Error fetching download info') ||
+    message.includes('Error downloading ciphertext')
+  ) {
+    // Suppress these expected errors
+    return
+  }
+  // Log other errors normally
+  originalConsoleError.apply(console, args)
+}
+

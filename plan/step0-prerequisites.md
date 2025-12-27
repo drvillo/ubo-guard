@@ -7,7 +7,7 @@ Ensure you have all required third-party services and credentials ready so you c
 ## Services to sign up for
 - **Supabase**
   - Used for: Postgres database, Auth (email OTP/magic link), Storage (ciphertext blobs)
-- **Mailgun**
+- **Mailtrap**
   - Used for: transactional email (team invites, vendor OTP, one-time vendor secret delivery)
 - **(Optional) Vercel**
   - Used for: hosted deployment later; not required for local validation
@@ -28,15 +28,17 @@ Ensure you have all required third-party services and credentials ready so you c
 - **`SUPABASE_STORAGE_BUCKET`**
   - Bucket name for ciphertext objects (e.g., `vault-ciphertext`)
 
-### Mailgun (Sending → Domains / API Keys)
-- **`MAILGUN_API_KEY`**
-  - Private API key for sending email
-- **`MAILGUN_DOMAIN`**
-  - Sending domain you’ve configured (e.g., `mg.yourdomain.com`)
-- **`MAILGUN_FROM_EMAIL`**
-  - From address used for all outbound mail (e.g., `Vault <vault@mg.yourdomain.com>`)
-- **`MAILGUN_API_BASE_URL`** *(optional)*
-  - If you need to pin region: `https://api.mailgun.net` (US) or `https://api.eu.mailgun.net` (EU)
+### Mailtrap (Email Testing → Sandboxes → Integration → SMTP)
+- **`MAILTRAP_HOST`**
+  - SMTP host (e.g., `sandbox.smtp.mailtrap.io`)
+- **`MAILTRAP_PORT`**
+  - SMTP port (typically `2525` for SMTP)
+- **`MAILTRAP_USERNAME`**
+  - SMTP username from your Mailtrap sandbox
+- **`MAILTRAP_PASSWORD`**
+  - SMTP password from your Mailtrap sandbox
+- **`MAILTRAP_FROM_EMAIL`**
+  - From address used for all outbound mail (e.g., `Vault <vault@example.com>`)
 
 ## App-owned secrets (generate locally; do not reuse across environments)
 These are not provided by third parties, but you should create them before implementing OTP/session flows.
@@ -53,7 +55,7 @@ These are not provided by third parties, but you should create them before imple
 
 ## Notes / sanity checks
 - **Never put `SUPABASE_SERVICE_ROLE_KEY` in client code.**
-- **Email deliverability**: for production-like testing, ensure your Mailgun domain has SPF/DKIM set up; for local-only testing you can still send to your own inbox but expect spam-folder behavior until DNS is correct.
+- **Email deliverability**: Mailtrap is designed for email testing and development. For production, you'll need to switch to a production email provider (e.g., Mailgun, SendGrid) with proper SPF/DKIM setup. For MVP development and testing, Mailtrap captures all emails in your sandbox inbox.
 - **Data classification reminder**: the server must only store ciphertext + minimal metadata; plaintext documents and secrets like the vault password, KEK/DEK/LSK/VS must never be persisted or logged (per PRD/TECH).
 
 

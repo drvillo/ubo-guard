@@ -3,18 +3,18 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
-import { unlockVault } from '@/lib/crypto/client-crypto'
+import { useVault } from '@/contexts/vault-context'
 import { DocumentUploader } from '@/components/vault/document-uploader'
 import { DocumentList } from '@/components/vault/document-list'
 import type { DocumentMetadata } from '@/types/documents'
 
 export default function VaultPage() {
-  const [vaultStatus, setVaultStatus] = useState<'loading' | 'needs-setup' | 'needs-unlock' | 'unlocked'>('loading')
+  const [vaultStatus, setVaultStatus] = useState<'loading' | 'needs-setup' | 'needs-unlock' | 'unlocked' | 'delegate'>('loading')
   const [password, setPassword] = useState('')
-  const [kek, setKek] = useState<Uint8Array | null>(null)
   const [documents, setDocuments] = useState<DocumentMetadata[]>([])
-  const [vaultData, setVaultData] = useState<{ id: string; kdfSalt: string; kdfParams: any } | null>(null)
+  const [vaultData, setVaultData] = useState<{ id: string; kdfSalt: string; kdfParams: any; role?: string } | null>(null)
   const router = useRouter()
+  const { kek, isUnlocked, unlock, lock } = useVault()
 
   useEffect(() => {
     checkVaultStatus()
@@ -49,7 +49,20 @@ export default function VaultPage() {
 
       const data = await response.json()
       setVaultData(data)
-      setVaultStatus('needs-unlock')
+      
+      // Check if user is a delegate
+      if (data.role === 'delegate') {
+        setVaultStatus('delegate')
+        await loadDocuments()
+      } else {
+        // Check if vault is already unlocked in context
+        if (isUnlocked()) {
+          setVaultStatus('unlocked')
+          await loadDocuments()
+        } else {
+          setVaultStatus('needs-unlock')
+        }
+      }
     } catch (error) {
       console.error('Error checking vault status:', error)
       setVaultStatus('needs-setup')
@@ -61,8 +74,11 @@ export default function VaultPage() {
     if (!vaultData || !password) return
 
     try {
-      const derivedKek = await unlockVault(password, vaultData.kdfSalt, vaultData.kdfParams)
-      setKek(derivedKek)
+      await unlock(password, {
+        vaultId: vaultData.id,
+        kdfSalt: vaultData.kdfSalt,
+        kdfParams: vaultData.kdfParams,
+      })
       setVaultStatus('unlocked')
       setPassword('') // Clear password from memory
       await loadDocuments()
@@ -86,6 +102,7 @@ export default function VaultPage() {
   }
 
   async function handleSignOut() {
+    lock() // Clear vault state
     await supabase.auth.signOut()
     router.push('/sign-in')
   }
@@ -96,6 +113,67 @@ export default function VaultPage() {
 
   if (vaultStatus === 'needs-setup') {
     return <div className="flex min-h-screen items-center justify-center">Redirecting to setup...</div>
+  }
+
+  if (vaultStatus === 'delegate') {
+    return (
+      <div className="min-h-screen bg-zinc-50 dark:bg-black">
+        <div className="mx-auto max-w-4xl px-4 py-8">
+          <div className="mb-8 flex items-center justify-between">
+            <h1 className="text-3xl font-semibold text-black dark:text-zinc-50">Vault</h1>
+            <div className="flex gap-2">
+              <button
+                onClick={() => router.push('/share-requests')}
+                className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-black dark:hover:bg-zinc-200"
+              >
+                Share Requests
+              </button>
+              <button
+                onClick={() => router.push('/audit')}
+                className="rounded-md bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-50 dark:hover:bg-zinc-700"
+              >
+                Audit Log
+              </button>
+              <button
+                onClick={handleSignOut}
+                className="rounded-md bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-50 dark:hover:bg-zinc-700"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-zinc-900">
+            <h2 className="mb-4 text-xl font-semibold text-black dark:text-zinc-50">Delegate Access</h2>
+            <p className="mb-4 text-zinc-600 dark:text-zinc-400">
+              As a delegate, you can create share requests but cannot access or decrypt documents.
+            </p>
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Available Documents:</p>
+              {documents.length === 0 ? (
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">No documents available.</p>
+              ) : (
+                <ul className="list-disc list-inside space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+                  {documents.map((doc) => (
+                    <li key={doc.id}>
+                      {doc.docType} - {doc.filename} ({(doc.size / 1024).toFixed(2)} KB)
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="mt-6">
+              <button
+                onClick={() => router.push('/share-requests/new')}
+                className="rounded-md bg-black px-4 py-2 font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-black dark:hover:bg-zinc-200"
+              >
+                Create Share Request
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (vaultStatus === 'needs-unlock') {
@@ -140,12 +218,32 @@ export default function VaultPage() {
       <div className="mx-auto max-w-4xl px-4 py-8">
         <div className="mb-8 flex items-center justify-between">
           <h1 className="text-3xl font-semibold text-black dark:text-zinc-50">Your Vault</h1>
-          <button
-            onClick={handleSignOut}
-            className="rounded-md bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-50 dark:hover:bg-zinc-700"
-          >
-            Sign Out
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => router.push('/team')}
+              className="rounded-md bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-50 dark:hover:bg-zinc-700"
+            >
+              Team
+            </button>
+            <button
+              onClick={() => router.push('/share-requests')}
+              className="rounded-md bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-50 dark:hover:bg-zinc-700"
+            >
+              Share Requests
+            </button>
+            <button
+              onClick={() => router.push('/audit')}
+              className="rounded-md bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-50 dark:hover:bg-zinc-700"
+            >
+              Audit Log
+            </button>
+            <button
+              onClick={handleSignOut}
+              className="rounded-md bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-50 dark:hover:bg-zinc-700"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
 
         {kek && (

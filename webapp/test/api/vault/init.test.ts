@@ -13,6 +13,8 @@ vi.mock('@/lib/supabase/server', () => ({
   createServerClient: vi.fn(),
 }))
 
+const mockedCreateServerClient = vi.mocked(createServerClient)
+
 vi.mock('@/lib/db/prisma', () => ({
   prisma: {
     userProfile: {
@@ -26,6 +28,8 @@ vi.mock('@/lib/db/prisma', () => ({
   },
 }))
 
+const mockedPrisma = vi.mocked(prisma)
+
 describe('/api/vault/init', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -33,24 +37,24 @@ describe('/api/vault/init', () => {
 
   it('should initialize vault successfully', async () => {
     const mockUser = { id: 'user-123' }
-    createServerClient.mockResolvedValue({
+    mockedCreateServerClient.mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
           data: { user: mockUser },
           error: null,
         }),
       },
-    })
+    } as any)
 
     const mockUserProfile = { id: 'profile-123', userId: 'user-123' }
-    prisma.userProfile.findUnique.mockResolvedValue(mockUserProfile)
-    prisma.vault.findUnique.mockResolvedValue(null)
-    prisma.vault.create.mockResolvedValue({
+    mockedPrisma.userProfile.findUnique.mockResolvedValue(mockUserProfile as any)
+    mockedPrisma.vault.findUnique.mockResolvedValue(null)
+    mockedPrisma.vault.create.mockResolvedValue({
       id: 'vault-123',
       ownerId: 'profile-123',
       createdAt: new Date(),
       updatedAt: new Date(),
-    })
+    } as any)
 
     const request = new NextRequest('http://localhost/api/vault/init', {
       method: 'POST',
@@ -69,18 +73,18 @@ describe('/api/vault/init', () => {
 
     expect(response.status).toBe(200)
     expect(data.id).toBe('vault-123')
-    expect(prisma.vault.create).toHaveBeenCalled()
+    expect(mockedPrisma.vault.create).toHaveBeenCalled()
   })
 
   it('should return 401 if user is not authenticated', async () => {
-    createServerClient.mockResolvedValue({
+    mockedCreateServerClient.mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
           data: { user: null },
           error: new Error('Not authenticated'),
         }),
       },
-    })
+    } as any)
 
     const request = new NextRequest('http://localhost/api/vault/init', {
       method: 'POST',
@@ -96,18 +100,18 @@ describe('/api/vault/init', () => {
 
   it('should return 400 if vault already exists', async () => {
     const mockUser = { id: 'user-123' }
-    createServerClient.mockResolvedValue({
+    mockedCreateServerClient.mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
           data: { user: mockUser },
           error: null,
         }),
       },
-    })
+    } as any)
 
     const mockUserProfile = { id: 'profile-123', userId: 'user-123' }
-    prisma.userProfile.findUnique.mockResolvedValue(mockUserProfile)
-    prisma.vault.findUnique.mockResolvedValue({ id: 'existing-vault' })
+    mockedPrisma.userProfile.findUnique.mockResolvedValue(mockUserProfile as any)
+    mockedPrisma.vault.findUnique.mockResolvedValue({ id: 'existing-vault' } as any)
 
     const request = new NextRequest('http://localhost/api/vault/init', {
       method: 'POST',
@@ -123,14 +127,14 @@ describe('/api/vault/init', () => {
 
   it('should return 400 for invalid request body', async () => {
     const mockUser = { id: 'user-123' }
-    createServerClient.mockResolvedValue({
+    mockedCreateServerClient.mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
           data: { user: mockUser },
           error: null,
         }),
       },
-    })
+    } as any)
 
     const request = new NextRequest('http://localhost/api/vault/init', {
       method: 'POST',

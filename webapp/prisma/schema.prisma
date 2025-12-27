@@ -1,5 +1,6 @@
 // Prisma schema for Personal KYC Vault MVP
 // Step 1: Owner vault + encryption + upload/list/replace/download
+// Step 2: Team invites + delegate role + share requests
 
 generator client {
   provider = "prisma-client-js"
@@ -18,7 +19,12 @@ model UserProfile {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  vault Vault?
+  vault            Vault?            @relation("VaultOwner")
+  teamMemberships  TeamMembership[]
+  createdInvites   TeamInvite[]      @relation("InviteCreator")
+  acceptedInvites  TeamInvite[]      @relation("InviteAccepter")
+  createdRequests  ShareRequest[]
+  auditEvents      AuditEvent[]
 
   @@map("user_profiles")
 }
@@ -32,8 +38,12 @@ model Vault {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  owner      UserProfile @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  documents  Document[]
+  owner           UserProfile      @relation("VaultOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  documents       Document[]
+  teamMemberships TeamMembership[]
+  teamInvites     TeamInvite[]
+  shareRequests   ShareRequest[]
+  auditEvents     AuditEvent[]
 
   @@map("vaults")
 }
@@ -63,5 +73,115 @@ model Document {
 
   @@unique([vaultId, docType]) // Only one document per type per vault
   @@map("documents")
+}
+
+// Team membership roles
+enum TeamRole {
+  owner
+  delegate
+}
+
+// Team memberships (many-to-many: users can be members of multiple vaults)
+model TeamMembership {
+  id            String   @id @default(uuid())
+  vaultId       String
+  userId        String   // UserProfile.id
+  role          TeamRole
+  permissionsJson Json   // { allowedDocTypes: DocumentType[] }
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  vault         Vault        @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  user          UserProfile   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([vaultId, userId])
+  @@map("team_memberships")
+}
+
+// Team invites (pending invitations)
+model TeamInvite {
+  id            String    @id @default(uuid())
+  vaultId       String
+  invitedEmail  String
+  role          TeamRole
+  permissionsJson Json     // { allowedDocTypes: DocumentType[] }
+  tokenHash     String    // SHA-256 hash of invite token (with pepper)
+  expiresAt     DateTime
+  acceptedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  createdById   String    // UserProfile.id of inviter
+  acceptedById  String?   // UserProfile.id of accepter
+
+  vault         Vault        @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  creator       UserProfile  @relation("InviteCreator", fields: [createdById], references: [id])
+  accepter      UserProfile? @relation("InviteAccepter", fields: [acceptedById], references: [id])
+
+  @@map("team_invites")
+}
+
+// Share request status
+enum ShareRequestStatus {
+  pending
+  approved
+  rejected
+  cancelled
+}
+
+// Share requests (created by delegates, approved by owners)
+model ShareRequest {
+  id                String              @id @default(uuid())
+  vaultId           String
+  createdById       String              // UserProfile.id
+  vendorLabel       String              // Human-readable vendor identifier
+  purposeNotes      String?             // Optional notes about purpose
+  requestedDocTypes DocumentType[]     // Array of document types requested
+  expiresAt         DateTime            // When the share should expire
+  status            ShareRequestStatus  @default(pending)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  vault             Vault        @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  creator           UserProfile  @relation(fields: [createdById], references: [id])
+
+  @@map("share_requests")
+}
+
+// Audit event types
+enum AuditEventType {
+  invite_created
+  invite_accepted
+  member_removed
+  share_request_created
+  share_request_approved
+  share_request_rejected
+  share_request_cancelled
+}
+
+// Audit actor types
+enum AuditActorType {
+  owner
+  delegate
+  system
+}
+
+// Audit events (append-only log)
+model AuditEvent {
+  id                  String          @id @default(uuid())
+  vaultId             String
+  actorType           AuditActorType
+  actorId             String          // UserProfile.id (or 'system' for system events)
+  eventType           AuditEventType
+  linkId              String?         // Share link ID (nullable, for future use)
+  docType             DocumentType?   // Document type involved (nullable)
+  watermarkReferenceId String?       // Watermark reference (nullable, for future use)
+  userAgent           String?
+  ip                  String?
+  createdAt           DateTime        @default(now())
+
+  vault               Vault        @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  actor               UserProfile? @relation(fields: [actorId], references: [id])
+
+  @@map("audit_events")
 }
 

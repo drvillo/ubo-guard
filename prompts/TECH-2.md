@@ -67,7 +67,7 @@ A fully “provider cannot read even during sharing” implementation with only 
 - **Web app** (Next.js): UI + client-side encryption/watermarking + server routes
 - **Postgres**: metadata + authz + audit log
 - **Object storage**: encrypted document blobs
-- **Email provider**: invites and vendor OTP delivery (Mailgun)
+- **Email provider**: invites and vendor OTP delivery (Mailtrap)
 
 ### 3.2 Data classification
 - **Plaintext documents**: exist only in the user’s browser memory during encrypt/decrypt.

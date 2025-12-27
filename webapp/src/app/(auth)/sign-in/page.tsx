@@ -1,14 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function SignInPage() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectUrl = searchParams.get('redirect')
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault()
@@ -16,10 +18,14 @@ export default function SignInPage() {
     setMessage('')
 
     try {
+      const callbackUrl = redirectUrl
+        ? `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectUrl)}`
+        : `${window.location.origin}/auth/callback`
+      
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: callbackUrl,
         },
       })
 

@@ -167,3 +167,4 @@ Verify that users can unlock their vault using the password set during setup, an
 - If unlock fails, verify the password matches the one used in Test 02
 - The password is cleared from memory after successful unlock (security best practice)
 
+

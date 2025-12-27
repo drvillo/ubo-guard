@@ -78,7 +78,7 @@ Let the Owner invite a teammate as a **Delegate (Sharer)** who can manage **shar
 
 ## Implementation notes
 - **Invite delivery**
-  - Use an email provider (Mailgun per TECH §10.1) to send an accept link containing a random token.
+  - Use an email provider (Mailtrap per TECH §10.1) to send an accept link containing a random token.
   - Store only a **hash of the invite token** (same pattern as share link tokens later).
 - **Authorization**
   - Owner-only routes: manage members/invites.
@@ -112,4 +112,170 @@ Let the Owner invite a teammate as a **Delegate (Sharer)** who can manage **shar
 ## Ready for next step when…
 - A delegate can create pending share requests, and repeated attempts to access document decrypt/download paths as a delegate are blocked.
 
+## Implementation Plan
 
+### Critical Incompatibilities Identified
+
+1. **Authorization Model Mismatch**
+   - **Current**: All routes assume 1:1 user→vault relationship (owner only)
+   - **Required**: Many-to-many via `team_memberships` with role-based access
+   - **Impact**: All existing API routes need authorization refactoring
+
+2. **Vault Access Pattern**
+   - **Current**: Routes check `userProfile.vault` directly
+   - **Required**: Query `team_memberships` to find accessible vaults and determine role
+   - **Impact**: Need new authorization helper functions
+
+3. **Document Access Control**
+   - **Current**: Routes return `encryptedDekForOwner` to any authenticated user with vault access
+   - **Required**: Delegates must NOT access `encryptedDekForOwner`, ciphertext, or any decryption material
+   - **Impact**: Must add role checks before returning sensitive fields
+
+4. **Vault Unlock Flow**
+   - **Current**: `/vault` page assumes user owns vault and can unlock
+   - **Required**: Delegates should see different UI (share requests only, no unlock)
+   - **Impact**: UI needs role-aware rendering
+
+5. **Database Schema**
+   - **Missing**: `team_memberships`, `team_invites`, `share_requests`, `audit_events`
+   - **Impact**: New Prisma migration required
+
+6. **Email Service**
+   - **Missing**: No email sending capability
+   - **Note**: Using Mailtrap SMTP as specified in TECH-2 §10.1 and step0-prerequisites.md
+   - **Impact**: Need to implement Mailtrap SMTP client
+
+### Design Decisions
+
+1. **Email Provider**
+   - **Decision**: Use Mailtrap SMTP as specified in TECH-2 §10.1 and step0-prerequisites.md
+   - **Rationale**: Mailtrap is ideal for MVP development and testing, capturing all emails in sandbox inbox
+   - **Action**: Implement Mailtrap SMTP client using SMTP credentials from Mailtrap sandbox
+
+2. **Authorization Helper Pattern**
+   - **Decision**: Create reusable authorization utilities
+   - **Location**: `src/lib/auth/authorization.ts`
+   - **Functions needed**:
+     - `getUserVaultAccess(userId)` → returns vaults user can access with roles
+     - `requireVaultAccess(vaultId, userId, requiredRole?)` → throws if unauthorized
+     - `isVaultOwner(vaultId, userId)` → boolean check
+     - `isVaultDelegate(vaultId, userId)` → boolean check
+
+3. **Vault Access Query Strategy**
+   - **Decision**: Single query pattern for all routes
+   - **Pattern**: Query `team_memberships` + `vaults` via userProfile, handle both owner and delegate cases
+   - **Fallback**: If no team membership found, check if user is owner (backward compatibility)
+
+4. **Delegate UI Access Model**
+   - **Decision**: Delegates can access `/vault` but see limited view
+   - **UI Changes**:
+     - Hide unlock form for delegates
+     - Hide document upload/download for delegates
+     - Show share requests UI for delegates
+     - Show team management only for owners
+
+5. **Audit Log Scope (Step 2)**
+   - **Decision**: Basic audit events only (team actions + share requests)
+   - **Events**: `invite_created`, `invite_accepted`, `member_removed`, `share_request_created`
+   - **Defer**: Vendor events, watermark events (Step 4)
+
+6. **Share Request Status Model**
+   - **Decision**: Simple enum: `pending` | `approved` | `rejected` | `cancelled`
+   - **Note**: Approval logic (Step 3) will transition `pending` → `approved`
+
+### Implementation Strategy
+
+#### Phase 1: Database Schema & Authorization Foundation
+1. Add Prisma models: `TeamMembership`, `TeamInvite`, `ShareRequest`, `AuditEvent`
+2. Create migration
+3. Build authorization helper functions
+4. Update existing routes to use new authorization pattern
+
+#### Phase 2: Team Invites
+1. Create email service (Mailtrap SMTP client)
+2. Implement invite creation API (`POST /api/team/invites`)
+3. Implement invite acceptance API (`POST /api/team/invites/[token]/accept`)
+4. Create team management UI (`/team`)
+
+#### Phase 3: Share Requests
+1. Implement share request creation API (`POST /api/share-requests`)
+2. Implement share request listing API (`GET /api/share-requests`)
+3. Implement share request detail API (`GET /api/share-requests/[id]`)
+4. Create share request UI pages
+
+#### Phase 4: Delegate Access Control
+1. Update document routes to block delegate access to `encryptedDekForOwner`
+2. Update ciphertext route to block delegate access
+3. Update vault page to show role-appropriate UI
+4. Add audit logging for team/share-request events
+
+#### Phase 5: Audit Log UI
+1. Create basic audit log API (`GET /api/audit`)
+2. Create audit log UI (`/audit`)
+
+### Files to Create
+
+#### Database & Auth
+- `webapp/src/lib/auth/authorization.ts` - Authorization helpers
+- `webapp/src/lib/email/mailtrap.ts` - Email service client (SMTP-based)
+
+#### API Routes
+- `webapp/src/app/api/team/invites/route.ts`
+- `webapp/src/app/api/team/invites/[token]/accept/route.ts`
+- `webapp/src/app/api/team/members/route.ts`
+- `webapp/src/app/api/share-requests/route.ts`
+- `webapp/src/app/api/share-requests/[id]/route.ts`
+- `webapp/src/app/api/audit/route.ts`
+
+#### UI Pages
+- `webapp/src/app/team/page.tsx`
+- `webapp/src/app/share-requests/page.tsx`
+- `webapp/src/app/share-requests/new/page.tsx`
+- `webapp/src/app/share-requests/[id]/page.tsx`
+- `webapp/src/app/audit/page.tsx`
+
+#### Components
+- `webapp/src/components/team/invite-form.tsx`
+- `webapp/src/components/team/member-list.tsx`
+- `webapp/src/components/share-requests/request-form.tsx`
+- `webapp/src/components/share-requests/request-list.tsx`
+- `webapp/src/components/audit/audit-log.tsx`
+
+### Files to Modify
+
+#### Critical Security Updates
+- `webapp/src/app/api/documents/[id]/download-info/route.ts` - Add role check, block delegates
+- `webapp/src/app/api/documents/[id]/ciphertext/route.ts` - Add role check, block delegates
+- `webapp/src/app/api/documents/route.ts` - Update to use team membership query
+- `webapp/src/app/api/vault/status/route.ts` - Update to support delegate access
+- `webapp/src/app/vault/page.tsx` - Add role-aware UI rendering
+
+#### Schema
+- `webapp/prisma/schema.prisma` - Add new models
+
+### Backward Compatibility Strategy
+
+1. **Owner Access Preserved**: Existing owner flows continue to work via `vault.ownerId` check
+2. **Gradual Migration**: Authorization helpers check team membership first, fall back to owner check
+3. **No Breaking Changes**: All existing API contracts remain the same for owners
+4. **Delegates Get New Endpoints**: Delegate-specific functionality uses new routes
+
+### Security Enforcement Points
+
+1. **Server-Side Authorization**: Every route validates role before returning data
+2. **Field-Level Filtering**: Delegates never receive `encryptedDekForOwner` in responses
+3. **Query Filtering**: Document queries exclude sensitive fields for delegates
+4. **Audit Logging**: All team/share-request actions logged for accountability
+
+### Implementation Tasks
+
+1. **Schema Migration**: Add Prisma models for TeamMembership, TeamInvite, ShareRequest, AuditEvent and create migration
+2. **Auth Helpers**: Create authorization helper functions in `src/lib/auth/authorization.ts` for vault access and role checks
+3. **Email Service**: Implement Mailtrap email service client in `src/lib/email/mailtrap.ts`
+4. **Update Document Routes**: Update existing document API routes to use new authorization and block delegate access to `encryptedDekForOwner`
+5. **Team Invite API**: Implement team invite creation and acceptance API routes
+6. **Team UI**: Create `/team` page with invite form and member list UI
+7. **Share Request API**: Implement share request CRUD API routes with authorization
+8. **Share Request UI**: Create share request pages (list, new, detail) with role-aware access
+9. **Vault Page Update**: Update `/vault` page to show role-appropriate UI (hide unlock/upload for delegates)
+10. **Audit Log**: Implement audit log API and UI for team/share-request events

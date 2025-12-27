@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/db/prisma'
+import { getUserVaultAccess } from '@/lib/auth/authorization'
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,27 +15,53 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get user profile and vault
-    const userProfile = await prisma.userProfile.findUnique({
-      where: { userId: user.id },
-      include: { vault: { include: { documents: true } } },
-    })
+    const { searchParams } = new URL(request.url)
+    const vaultId = searchParams.get('vaultId')
 
-    if (!userProfile || !userProfile.vault) {
-      return NextResponse.json({ error: 'Vault not initialized' }, { status: 404 })
+    // Get user's vault access
+    const vaultAccess = await getUserVaultAccess(user.id)
+
+    if (vaultAccess.length === 0) {
+      return NextResponse.json({ error: 'No vault access' }, { status: 404 })
     }
 
-    // Return document metadata (no plaintext)
-    const documents = userProfile.vault.documents.map((doc) => ({
-      id: doc.id,
-      docType: doc.docType,
-      filename: doc.filename,
-      size: doc.size,
-      uploadedAt: doc.uploadedAt,
-      lastUpdatedBy: doc.lastUpdatedBy,
-    }))
+    // If vaultId specified, filter to that vault
+    const targetVaultId = vaultId || vaultAccess[0].vaultId
+    const access = vaultAccess.find((a) => a.vaultId === targetVaultId)
 
-    return NextResponse.json({ documents })
+    if (!access) {
+      return NextResponse.json({ error: 'Vault not found or access denied' }, { status: 404 })
+    }
+
+    // Get documents for this vault
+    const documents = await prisma.document.findMany({
+      where: { vaultId: targetVaultId },
+    })
+
+    // Return document metadata (no plaintext, no encryptedDekForOwner for delegates)
+    const documentList = documents.map((doc) => {
+      const baseDoc = {
+        id: doc.id,
+        docType: doc.docType,
+        filename: doc.filename,
+        size: doc.size,
+        uploadedAt: doc.uploadedAt,
+        lastUpdatedBy: doc.lastUpdatedBy,
+      }
+
+      // Only owners can see encryptedDekForOwner
+      if (access.role === 'owner') {
+        return {
+          ...baseDoc,
+          encryptedDekForOwner: doc.encryptedDekForOwner,
+          dekNonce: doc.dekNonce,
+        }
+      }
+
+      return baseDoc
+    })
+
+    return NextResponse.json({ documents: documentList })
   } catch (error) {
     console.error('Error fetching documents:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
