@@ -18,13 +18,18 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { vaultId, vendorLabel, purposeNotes, requestedDocTypes, expiresAt } = body
+    const { vaultId, vendorLabel, vendorEmail, purposeNotes, requestedDocTypes, expiresAt } = body
 
     if (!vaultId || !vendorLabel || !requestedDocTypes || !expiresAt) {
       return NextResponse.json(
         { error: 'Missing required fields: vaultId, vendorLabel, requestedDocTypes, expiresAt' },
         { status: 400 }
       )
+    }
+
+    // Validate vendor email format (basic check)
+    if (vendorEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(vendorEmail)) {
+      return NextResponse.json({ error: 'Invalid vendor email format' }, { status: 400 })
     }
 
     // Require access to vault (owner or delegate)
@@ -71,6 +76,7 @@ export async function POST(request: NextRequest) {
         vaultId,
         createdById: userProfile.id,
         vendorLabel,
+        vendorEmail: vendorEmail || null,
         purposeNotes: purposeNotes || null,
         requestedDocTypes: docTypes,
         expiresAt: expiryDate,
@@ -90,6 +96,7 @@ export async function POST(request: NextRequest) {
       id: shareRequest.id,
       vaultId: shareRequest.vaultId,
       vendorLabel: shareRequest.vendorLabel,
+      vendorEmail: shareRequest.vendorEmail,
       purposeNotes: shareRequest.purposeNotes,
       requestedDocTypes: shareRequest.requestedDocTypes,
       expiresAt: shareRequest.expiresAt,
@@ -152,6 +159,7 @@ export async function GET(request: NextRequest) {
         id: req.id,
         vaultId: req.vaultId,
         vendorLabel: req.vendorLabel,
+        vendorEmail: req.vendorEmail,
         purposeNotes: req.purposeNotes,
         requestedDocTypes: req.requestedDocTypes,
         expiresAt: req.expiresAt,

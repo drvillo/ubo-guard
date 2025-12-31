@@ -70,6 +70,87 @@ If you didn't expect this invitation, you can safely ignore this email.
   }
 }
 
+export interface VendorSecretEmailParams {
+  to: string // Vendor email
+  vendorLabel: string
+  linkUrl: string
+  vendorSecret: string // VS in formatted form (AAAA-BBBB-CCCC-DDDD-EEEE-X)
+  expiresAt: Date
+}
+
+/**
+ * Send vendor secret email
+ * Per Step 3 plan: email contains vendor label, link URL, VS, expiry, and security warning
+ */
+export async function sendVendorSecretEmail(params: VendorSecretEmailParams): Promise<void> {
+  const { to, vendorLabel, linkUrl, vendorSecret, expiresAt } = params
+
+  const expiryDate = new Date(expiresAt).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+
+  const mailOptions = {
+    from: mailtrapFromEmail,
+    to,
+    subject: `Secure Document Access: ${vendorLabel}`,
+    html: `
+      <h2>Secure Document Access</h2>
+      <p>You have been granted access to view documents shared by <strong>${vendorLabel}</strong>.</p>
+      
+      <h3>Access Information</h3>
+      <p><strong>Vendor Secret:</strong> <code style="font-family: monospace; font-size: 1.2em; background: #f5f5f5; padding: 0.5em; border-radius: 4px;">${vendorSecret}</code></p>
+      <p><strong>Share Link:</strong> <a href="${linkUrl}">${linkUrl}</a></p>
+      <p><strong>Expires:</strong> ${expiryDate}</p>
+      
+      <h3>Security Warning</h3>
+      <p style="color: #d32f2f; font-weight: bold;">⚠️ DO NOT FORWARD THIS EMAIL</p>
+      <p>The vendor secret above is a one-time access code. Keep it secure and do not share it with anyone else.</p>
+      
+      <h3>How to Access</h3>
+      <ol>
+        <li>Click the share link above or copy it into your browser</li>
+        <li>Enter your email address and verify with the one-time passcode</li>
+        <li>Enter the vendor secret shown above</li>
+        <li>View or download the shared documents</li>
+      </ol>
+      
+      <p>If you did not expect this email, please contact the sender or ignore this message.</p>
+    `,
+    text: `
+Secure Document Access
+
+You have been granted access to view documents shared by ${vendorLabel}.
+
+Access Information:
+- Vendor Secret: ${vendorSecret}
+- Share Link: ${linkUrl}
+- Expires: ${expiryDate}
+
+SECURITY WARNING: DO NOT FORWARD THIS EMAIL
+The vendor secret above is a one-time access code. Keep it secure and do not share it with anyone else.
+
+How to Access:
+1. Click the share link above or copy it into your browser
+2. Enter your email address and verify with the one-time passcode
+3. Enter the vendor secret shown above
+4. View or download the shared documents
+
+If you did not expect this email, please contact the sender or ignore this message.
+    `,
+  }
+
+  try {
+    await transporter.sendMail(mailOptions)
+  } catch (error) {
+    console.error('Failed to send vendor secret email:', error)
+    throw new Error('Failed to send vendor secret email')
+  }
+}
+
 /**
  * Verify email service configuration
  */

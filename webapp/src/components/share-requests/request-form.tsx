@@ -9,6 +9,7 @@ interface RequestFormProps {
 
 export function RequestForm({ vaultId, onRequestCreated }: RequestFormProps) {
   const [vendorLabel, setVendorLabel] = useState('')
+  const [vendorEmail, setVendorEmail] = useState('')
   const [purposeNotes, setPurposeNotes] = useState('')
   const [requestedDocTypes, setRequestedDocTypes] = useState<string[]>([])
   const [expiresAt, setExpiresAt] = useState('')
@@ -34,6 +35,11 @@ export function RequestForm({ vaultId, onRequestCreated }: RequestFormProps) {
       return
     }
 
+    if (vendorEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(vendorEmail)) {
+      setError('Invalid vendor email format')
+      return
+    }
+
     if (requestedDocTypes.length === 0) {
       setError('At least one document type must be requested')
       return
@@ -54,6 +60,7 @@ export function RequestForm({ vaultId, onRequestCreated }: RequestFormProps) {
         body: JSON.stringify({
           vaultId,
           vendorLabel,
+          vendorEmail: vendorEmail || null,
           purposeNotes: purposeNotes || null,
           requestedDocTypes,
           expiresAt,
@@ -66,6 +73,7 @@ export function RequestForm({ vaultId, onRequestCreated }: RequestFormProps) {
       }
 
       setVendorLabel('')
+      setVendorEmail('')
       setPurposeNotes('')
       setRequestedDocTypes([])
       setExpiresAt('')
@@ -103,6 +111,23 @@ export function RequestForm({ vaultId, onRequestCreated }: RequestFormProps) {
           className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-black shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
           placeholder="e.g., Acme Corp KYC"
         />
+      </div>
+
+      <div>
+        <label htmlFor="vendorEmail" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Vendor Email (Optional)
+        </label>
+        <input
+          id="vendorEmail"
+          type="email"
+          value={vendorEmail}
+          onChange={(e) => setVendorEmail(e.target.value)}
+          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-black shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+          placeholder="vendor@example.com"
+        />
+        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+          Email address to send the vendor secret to when approved
+        </p>
       </div>
 
       <div>

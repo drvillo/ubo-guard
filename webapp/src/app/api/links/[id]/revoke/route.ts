@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/db/prisma'
 import { requireVaultAccess } from '@/lib/auth/authorization'
+import { logAuditEvent } from '@/lib/audit/audit-log'
 
-export async function GET(
+export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -20,21 +21,17 @@ export async function GET(
 
     const { id } = await params
 
-    // Get share request
-    const shareRequest = await prisma.shareRequest.findUnique({
+    // Get share link
+    const shareLink = await prisma.shareLink.findUnique({
       where: { id },
-      include: {
-        vault: true,
-        creator: true,
-      },
     })
 
-    if (!shareRequest) {
-      return NextResponse.json({ error: 'Share request not found' }, { status: 404 })
+    if (!shareLink) {
+      return NextResponse.json({ error: 'Share link not found' }, { status: 404 })
     }
 
     // Require access to vault (owner or delegate)
-    const access = await requireVaultAccess(shareRequest.vaultId, user.id)
+    const access = await requireVaultAccess(shareLink.vaultId, user.id)
 
     // Get user profile
     const userProfile = await prisma.userProfile.findUnique({
@@ -45,25 +42,41 @@ export async function GET(
       return NextResponse.json({ error: 'User profile not found' }, { status: 404 })
     }
 
-    // Delegates can only view their own requests
-    if (access.role === 'delegate' && shareRequest.createdById !== userProfile.id) {
+    // Delegates can only revoke links they created
+    if (access.role === 'delegate' && shareLink.createdById !== userProfile.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
+    // Check if already revoked
+    if (shareLink.status === 'revoked') {
+      return NextResponse.json({ error: 'Link is already revoked' }, { status: 400 })
+    }
+
+    // Revoke link
+    const updatedLink = await prisma.shareLink.update({
+      where: { id },
+      data: {
+        status: 'revoked',
+        revokedAt: new Date(),
+      },
+    })
+
+    // Log audit event
+    await logAuditEvent({
+      vaultId: shareLink.vaultId,
+      actorType: access.role === 'owner' ? 'owner' : 'delegate',
+      actorId: userProfile.id,
+      eventType: 'link_revoked',
+      linkId: shareLink.id,
+    })
+
     return NextResponse.json({
-      id: shareRequest.id,
-      vaultId: shareRequest.vaultId,
-      vendorLabel: shareRequest.vendorLabel,
-      vendorEmail: shareRequest.vendorEmail,
-      purposeNotes: shareRequest.purposeNotes,
-      requestedDocTypes: shareRequest.requestedDocTypes,
-      expiresAt: shareRequest.expiresAt,
-      status: shareRequest.status,
-      createdAt: shareRequest.createdAt,
-      updatedAt: shareRequest.updatedAt,
+      id: updatedLink.id,
+      status: updatedLink.status,
+      revokedAt: updatedLink.revokedAt,
     })
   } catch (error: any) {
-    console.error('Error fetching share request:', error)
+    console.error('Error revoking share link:', error)
     if (error.message?.includes('Unauthorized')) {
       return NextResponse.json({ error: error.message }, { status: 403 })
     }

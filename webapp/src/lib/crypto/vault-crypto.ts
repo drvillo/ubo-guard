@@ -265,6 +265,92 @@ export function base64ToUint8Array(base64: string): Uint8Array {
 }
 
 /**
+ * Generate a random LSK (Link Share Key)
+ * Per TECH-2.md §5.4.1: random symmetric key (e.g., 32 bytes)
+ */
+export function generateLsk(): Uint8Array {
+  const lsk = new Uint8Array(32) // 32 bytes = 256 bits
+  crypto.getRandomValues(lsk)
+  return normalizeUint8Array(lsk)
+}
+
+/**
+ * Wrap DEK with LSK using AES-256-GCM
+ * Used during approval: owner decrypts DEK with KEK, then wraps with LSK
+ * Returns encrypted DEK + nonce + auth tag
+ */
+export async function wrapDekWithLsk(
+  dek: Uint8Array,
+  lsk: Uint8Array
+): Promise<EncryptedDek> {
+  const nonce = crypto.getRandomValues(new Uint8Array(12)) // 96-bit nonce for GCM
+
+  const key = await crypto.subtle.importKey(
+    'raw',
+    normalizeUint8Array(lsk),
+    { name: 'AES-GCM' },
+    false,
+    ['encrypt']
+  )
+
+  const encrypted = await crypto.subtle.encrypt(
+    {
+      name: 'AES-GCM',
+      iv: normalizeUint8Array(nonce),
+      tagLength: 128,
+    },
+    key,
+    normalizeUint8Array(dek)
+  )
+
+  const encryptedWithTag = new Uint8Array(encrypted)
+  const authTag = encryptedWithTag.slice(-16)
+  const encryptedDekOnly = encryptedWithTag.slice(0, -16)
+
+  return {
+    encryptedDek: encryptedDekOnly,
+    nonce,
+    authTag,
+  }
+}
+
+/**
+ * Wrap LSK with VS-derived wrapping key using AES-256-GCM
+ * Used during approval: derive K_wrap from VS, then encrypt LSK
+ * Returns encrypted LSK + nonce + auth tag
+ */
+export async function wrapLskWithVendorSecret(
+  lsk: Uint8Array,
+  vendorSecretBytes: Uint8Array,
+  salt: Uint8Array
+): Promise<EncryptedDek> {
+  // Derive wrapping key from VS
+  const wrapKey = await deriveWrapKeyFromVendorSecret(vendorSecretBytes, salt)
+
+  const nonce = crypto.getRandomValues(new Uint8Array(12)) // 96-bit nonce for GCM
+
+  const encrypted = await crypto.subtle.encrypt(
+    {
+      name: 'AES-GCM',
+      iv: normalizeUint8Array(nonce),
+      tagLength: 128,
+    },
+    wrapKey,
+    normalizeUint8Array(lsk)
+  )
+
+  const encryptedWithTag = new Uint8Array(encrypted)
+  const authTag = encryptedWithTag.slice(-16)
+  const encryptedLskOnly = encryptedWithTag.slice(0, -16)
+
+  return {
+    encryptedDek: encryptedLskOnly, // Reusing EncryptedDek interface for LSK
+    nonce,
+    authTag,
+  }
+}
+
+/**
  * Derive wrapping key from vendor secret using HKDF-SHA256
  * Used in Step 4 for vendor access: derive K_wrap from VS to decrypt LSK
  * Per TECH-2.md §5.4.2: K_wrap = HKDF-SHA256(IKM=VS_bytes, salt=lsk_salt, info="lsk-wrap")

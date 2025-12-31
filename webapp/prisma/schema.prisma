@@ -1,6 +1,7 @@
 // Prisma schema for Personal KYC Vault MVP
 // Step 1: Owner vault + encryption + upload/list/replace/download
 // Step 2: Team invites + delegate role + share requests
+// Step 3: Owner approval + share links + vendor secret delivery
 
 generator client {
   provider = "prisma-client-js"
@@ -24,6 +25,8 @@ model UserProfile {
   createdInvites   TeamInvite[]      @relation("InviteCreator")
   acceptedInvites  TeamInvite[]      @relation("InviteAccepter")
   createdRequests  ShareRequest[]
+  createdLinks     ShareLink[]
+  approvedLinks    ShareLink[]       @relation("LinkApprover")
   auditEvents      AuditEvent[]
 
   @@map("user_profiles")
@@ -43,6 +46,7 @@ model Vault {
   teamMemberships TeamMembership[]
   teamInvites     TeamInvite[]
   shareRequests   ShareRequest[]
+  shareLinks      ShareLink[]
   auditEvents     AuditEvent[]
 
   @@map("vaults")
@@ -70,6 +74,7 @@ model Document {
   dekNonce              String       // Base64-encoded: nonce/IV for DEK wrapping
 
   vault                 Vault        @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  shareLinkDocuments    ShareLinkDocument[]
 
   @@unique([vaultId, docType]) // Only one document per type per vault
   @@map("documents")
@@ -134,6 +139,7 @@ model ShareRequest {
   vaultId           String
   createdById       String              // UserProfile.id
   vendorLabel       String              // Human-readable vendor identifier
+  vendorEmail       String?             // Vendor email address (for sending VS)
   purposeNotes      String?             // Optional notes about purpose
   requestedDocTypes DocumentType[]     // Array of document types requested
   expiresAt         DateTime            // When the share should expire
@@ -143,8 +149,64 @@ model ShareRequest {
 
   vault             Vault        @relation(fields: [vaultId], references: [id], onDelete: Cascade)
   creator           UserProfile  @relation(fields: [createdById], references: [id])
+  shareLink         ShareLink?
 
   @@map("share_requests")
+}
+
+// Share link status
+enum ShareLinkStatus {
+  pending
+  approved
+  revoked
+}
+
+// Share links (created from approved share requests)
+model ShareLink {
+  id                    String          @id @default(uuid())
+  vaultId               String
+  createdById           String          // UserProfile.id
+  shareRequestId        String?         @unique // Optional link to originating request
+  status                ShareLinkStatus @default(pending)
+  approvedById          String?         // UserProfile.id of approver
+  approvedAt            DateTime?
+  vendorLabel           String
+  vendorEmail           String          // Email to send VS to
+  purposeNotes          String?
+  expiresAt             DateTime
+  revokedAt             DateTime?
+  tokenHash             String          // SHA-256 hash of link token (with pepper)
+  encryptedLskForVendor String?         // Base64-encoded: LSK encrypted with VS-derived key (nullable until approved)
+  lskSalt               String?         // Base64-encoded: salt for HKDF derivation (nullable until approved)
+  lskNonce              String?         // Base64-encoded: nonce/IV for LSK wrapping (nullable until approved)
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  vault                 Vault              @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  creator               UserProfile        @relation(fields: [createdById], references: [id])
+  approver              UserProfile?       @relation("LinkApprover", fields: [approvedById], references: [id])
+  shareRequest          ShareRequest?      @relation(fields: [shareRequestId], references: [id])
+  documents             ShareLinkDocument[]
+  auditEvents           AuditEvent[]
+
+  @@map("share_links")
+}
+
+// Share link documents (which documents are included in a link)
+model ShareLinkDocument {
+  id                    String       @id @default(uuid())
+  shareLinkId           String
+  documentId            String
+  docType               DocumentType
+  encryptedDekForLink   String       // Base64-encoded: DEK encrypted with LSK (AES-GCM)
+  dekForLinkNonce       String       // Base64-encoded: nonce/IV for DEK wrapping
+  createdAt             DateTime      @default(now())
+
+  shareLink             ShareLink    @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+  document              Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([shareLinkId, documentId])
+  @@map("share_link_documents")
 }
 
 // Audit event types
@@ -156,6 +218,8 @@ enum AuditEventType {
   share_request_approved
   share_request_rejected
   share_request_cancelled
+  link_created
+  link_revoked
 }
 
 // Audit actor types
@@ -181,6 +245,7 @@ model AuditEvent {
 
   vault               Vault        @relation(fields: [vaultId], references: [id], onDelete: Cascade)
   actor               UserProfile? @relation(fields: [actorId], references: [id])
+  shareLink           ShareLink?   @relation(fields: [linkId], references: [id])
 
   @@map("audit_events")
 }
