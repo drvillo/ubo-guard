@@ -4,7 +4,7 @@ Act as a senior developer working on an MVP incrementally.
 
 I want you to plan the implementation of the functionality described in the following spec file
 
-<!-- INSERT PLANNED SPEC HERE    -->
+**SPEC FILE PASSED AS CONTEXT IN CHAT**
 
 ## Methodology
 
