@@ -82,7 +82,7 @@ describe('/api/share-requests', () => {
           vendorLabel: 'Acme Corp',
           purposeNotes: 'KYC verification',
           requestedDocTypes: ['ID', 'ProofOfAddress'],
-          expiresAt: '2025-12-31',
+          expiresAt: new Date(Date.now() + 86400000 * 365).toISOString(), // 1 year from now
         }),
       })
 
@@ -130,7 +130,7 @@ describe('/api/share-requests', () => {
           vaultId: 'vault-123',
           vendorLabel: 'Acme Corp',
           requestedDocTypes: ['ID'],
-          expiresAt: '2025-12-31',
+          expiresAt: new Date(Date.now() + 86400000 * 365).toISOString(), // 1 year from now
         }),
       })
 
@@ -160,7 +160,7 @@ describe('/api/share-requests', () => {
           vaultId: 'vault-123',
           vendorLabel: 'Acme Corp',
           requestedDocTypes: ['SourceOfWealth'],
-          expiresAt: '2025-12-31',
+          expiresAt: new Date(Date.now() + 86400000 * 365).toISOString(), // 1 year from now
         }),
       })
 

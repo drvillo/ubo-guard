@@ -16,6 +16,9 @@ interface ShareLink {
   revokedAt: string | null
   approvedAt: string | null
   createdAt: string
+  createdBy: string | null
+  userRole?: 'owner' | 'delegate' | null
+  canRevoke?: boolean // Whether this user can revoke the link
   documents: Array<{
     documentId: string
     docType: string
@@ -31,35 +34,13 @@ export default function LinkDetailPage() {
   const [link, setLink] = useState<ShareLink | null>(null)
   const [loading, setLoading] = useState(true)
   const [revoking, setRevoking] = useState(false)
-  const [isOwner, setIsOwner] = useState(false)
 
   useEffect(() => {
     if (params.id) {
       const id = params.id as string
-      // Check if this is a token (not UUID) - tokens are base64url, UUIDs have dashes
-      const isToken = !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
       loadLink(id)
-      // Only check owner status for UUID-based access (authenticated users)
-      // Skip for token-based access (vendors) to avoid 401 errors
-      if (!isToken) {
-        checkOwnerStatus()
-      }
     }
   }, [params.id])
-
-  async function checkOwnerStatus() {
-    try {
-      const response = await fetch('/api/vault/status', {
-        credentials: 'include',
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setIsOwner(data.role === 'owner')
-      }
-    } catch (error) {
-      console.error('Error checking owner status:', error)
-    }
-  }
 
   async function loadLink(id: string) {
     try {
@@ -220,6 +201,13 @@ export default function LinkDetailPage() {
               </div>
             )}
 
+            {link.createdBy && (
+              <div>
+                <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Created By</label>
+                <p className="mt-1 text-black dark:text-zinc-50">{link.createdBy}</p>
+              </div>
+            )}
+
             <div>
               <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Documents</label>
               <div className="mt-2 space-y-2">
@@ -238,8 +226,8 @@ export default function LinkDetailPage() {
             </div>
           </div>
 
-          {/* Revoke button */}
-          {link.status !== 'revoked' && (
+          {/* Revoke button - only show if user can revoke and link is not already revoked */}
+          {link.canRevoke && link.status !== 'revoked' && (
             <div className="mt-6 border-t border-zinc-200 pt-6 dark:border-zinc-700">
               <button
                 onClick={handleRevoke}

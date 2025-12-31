@@ -16,6 +16,7 @@ interface ShareLink {
   revokedAt: string | null
   approvedAt: string | null
   createdAt: string
+  createdBy: string | null
   documents: Array<{
     documentId: string
     docType: string
@@ -155,6 +156,11 @@ export default function LinksPage() {
                       {link.documents.length} document{link.documents.length !== 1 ? 's' : ''} •{' '}
                       Expires: {new Date(link.expiresAt).toLocaleDateString()}
                     </p>
+                    {link.createdBy && (
+                      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
+                        Created by: {link.createdBy}
+                      </p>
+                    )}
                   </div>
                   <span className={`rounded-full px-3 py-1 text-sm font-medium ${getStatusColor(link.status)}`}>
                     {link.status}

@@ -10,6 +10,7 @@ interface ShareRequest {
   expiresAt: string
   status: 'pending' | 'approved' | 'rejected' | 'cancelled'
   createdAt: string
+  createdBy: string | null
 }
 
 interface RequestListProps {
@@ -57,6 +58,9 @@ export function RequestList({ requests }: RequestListProps) {
             </p>
             {request.purposeNotes && (
               <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">{request.purposeNotes}</p>
+            )}
+            {request.createdBy && (
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">Created by: {request.createdBy}</p>
             )}
           </div>
           <span className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusColor(request.status)}`}>

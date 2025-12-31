@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/db/prisma'
 import { requireVaultAccess } from '@/lib/auth/authorization'
 import { hashToken } from '@/lib/crypto/token-hash'
@@ -49,6 +49,12 @@ export async function GET(
               userId: true,
             },
           },
+          shareRequest: {
+            select: {
+              id: true,
+              createdById: true,
+            },
+          },
         },
       })
 
@@ -68,9 +74,35 @@ export async function GET(
         return NextResponse.json({ error: 'User profile not found' }, { status: 404 })
       }
 
-      // Delegates can only view links they created
-      if (access.role === 'delegate' && shareLink.createdById !== userProfile.id) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+      // Delegates can view links they created OR links created from their share requests
+      if (access.role === 'delegate') {
+        const canView =
+          shareLink.createdById === userProfile.id ||
+          (shareLink.shareRequest?.createdById === userProfile.id)
+
+        if (!canView) {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+        }
+      }
+
+      // Determine if user can revoke this link
+      // Owners can revoke any link, delegates can revoke links they created OR links from their share requests
+      const canRevoke =
+        access.role === 'owner' ||
+        (access.role === 'delegate' &&
+          (shareLink.createdById === userProfile.id ||
+            shareLink.shareRequest?.createdById === userProfile.id))
+
+      // Get creator's email from Supabase Auth
+      let creatorEmail: string | null = null
+      if (shareLink.creator?.userId) {
+        try {
+          const adminClient = createAdminClient()
+          const { data: creatorUser } = await adminClient.auth.admin.getUserById(shareLink.creator.userId)
+          creatorEmail = creatorUser.user?.email || null
+        } catch (error) {
+          console.error('Error fetching creator email:', error)
+        }
       }
 
       // Return full link detail for authenticated users
@@ -85,6 +117,9 @@ export async function GET(
         revokedAt: shareLink.revokedAt,
         approvedAt: shareLink.approvedAt,
         createdAt: shareLink.createdAt,
+        createdBy: creatorEmail,
+        userRole: access.role, // 'owner' | 'delegate'
+        canRevoke, // Whether this user can revoke the link
         documents: shareLink.documents.map((d: { documentId: string; docType: string; document: { filename: string; size: number } }) => ({
           documentId: d.documentId,
           docType: d.docType,
@@ -142,6 +177,7 @@ export async function GET(
         revokedAt: shareLink.revokedAt,
         approvedAt: shareLink.approvedAt,
         createdAt: shareLink.createdAt,
+        userRole: null, // Vendors have no role
         documents: shareLink.documents.map((d: { documentId: string; docType: string; document: { filename: string; size: number } }) => ({
           documentId: d.documentId,
           docType: d.docType,

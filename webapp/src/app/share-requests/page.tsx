@@ -14,6 +14,7 @@ interface ShareRequest {
   expiresAt: string
   status: 'pending' | 'approved' | 'rejected' | 'cancelled'
   createdAt: string
+  createdBy: string | null
 }
 
 export default function ShareRequestsPage() {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/db/prisma'
 import { requireVaultAccess } from '@/lib/auth/authorization'
 
@@ -54,29 +54,52 @@ export async function GET(request: NextRequest) {
             },
           },
         },
+        creator: {
+          select: {
+            userId: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     })
 
+    // Fetch creator emails for all links
+    const adminClient = createAdminClient()
+    const linksWithCreator = await Promise.all(
+      shareLinks.map(async (link) => {
+        let creatorEmail: string | null = null
+        if (link.creator?.userId) {
+          try {
+            const { data: creatorUser } = await adminClient.auth.admin.getUserById(link.creator.userId)
+            creatorEmail = creatorUser.user?.email || null
+          } catch (error) {
+            console.error('Error fetching creator email:', error)
+          }
+        }
+        return {
+          id: link.id,
+          vaultId: link.vaultId,
+          vendorLabel: link.vendorLabel,
+          vendorEmail: access.role === 'owner' ? link.vendorEmail : undefined, // Only owners see email
+          purposeNotes: link.purposeNotes,
+          status: link.status,
+          expiresAt: link.expiresAt,
+          revokedAt: link.revokedAt,
+          approvedAt: link.approvedAt,
+          createdAt: link.createdAt,
+          createdBy: creatorEmail,
+          documents: link.documents.map((d) => ({
+            documentId: d.documentId,
+            docType: d.docType,
+            filename: d.document.filename,
+          })),
+          // Never return VS, encryptedLskForVendor, lskSalt, lskNonce, or tokenHash
+        }
+      })
+    )
+
     return NextResponse.json({
-      links: shareLinks.map((link) => ({
-        id: link.id,
-        vaultId: link.vaultId,
-        vendorLabel: link.vendorLabel,
-        vendorEmail: access.role === 'owner' ? link.vendorEmail : undefined, // Only owners see email
-        purposeNotes: link.purposeNotes,
-        status: link.status,
-        expiresAt: link.expiresAt,
-        revokedAt: link.revokedAt,
-        approvedAt: link.approvedAt,
-        createdAt: link.createdAt,
-        documents: link.documents.map((d) => ({
-          documentId: d.documentId,
-          docType: d.docType,
-          filename: d.document.filename,
-        })),
-        // Never return VS, encryptedLskForVendor, lskSalt, lskNonce, or tokenHash
-      })),
+      links: linksWithCreator,
     })
   } catch (error: any) {
     console.error('Error fetching share links:', error)

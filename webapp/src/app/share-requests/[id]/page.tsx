@@ -26,6 +26,14 @@ interface ShareRequest {
   status: 'pending' | 'approved' | 'rejected' | 'cancelled'
   createdAt: string
   updatedAt: string
+  createdBy: string | null
+  shareLink: {
+    id: string
+    status: string
+    revokedAt: string | null
+    expiresAt: string
+    canRevoke?: boolean
+  } | null
 }
 
 interface Document {
@@ -44,6 +52,7 @@ export default function ShareRequestDetailPage() {
   const [isOwner, setIsOwner] = useState(false)
   const [approving, setApproving] = useState(false)
   const [approvalError, setApprovalError] = useState<string | null>(null)
+  const [revoking, setRevoking] = useState(false)
 
   useEffect(() => {
     if (params.id) {
@@ -93,6 +102,33 @@ export default function ShareRequestDetailPage() {
     lock() // Clear vault state
     await supabase.auth.signOut()
     router.push('/sign-in')
+  }
+
+  async function handleRevokeLink() {
+    if (!request?.shareLink || !confirm('Are you sure you want to revoke this link? This action cannot be undone.')) {
+      return
+    }
+
+    setRevoking(true)
+
+    try {
+      const response = await fetch(`/api/links/${request.shareLink.id}/revoke`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to revoke link')
+      }
+
+      // Reload request to show updated status
+      await loadRequest(request.id)
+    } catch (error) {
+      console.error('Error revoking link:', error)
+      alert('Failed to revoke link')
+    } finally {
+      setRevoking(false)
+    }
   }
 
   async function handleApprove() {
@@ -246,6 +282,8 @@ export default function ShareRequestDetailPage() {
         return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
       case 'cancelled':
         return 'bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-400'
+      case 'revoked':
+        return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
       default:
         return 'bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-400'
     }
@@ -310,10 +348,52 @@ export default function ShareRequestDetailPage() {
               <p className="mt-1 text-black dark:text-zinc-50">{new Date(request.createdAt).toLocaleString()}</p>
             </div>
 
+            {request.createdBy && (
+              <div>
+                <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Created By</label>
+                <p className="mt-1 text-black dark:text-zinc-50">{request.createdBy}</p>
+              </div>
+            )}
+
             {request.vendorEmail && (
               <div>
                 <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Vendor Email</label>
                 <p className="mt-1 text-black dark:text-zinc-50">{request.vendorEmail}</p>
+              </div>
+            )}
+
+            {request.shareLink && (
+              <div className="mt-6 border-t border-zinc-200 pt-6 dark:border-zinc-700">
+                <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Share Link</label>
+                <div className="mt-2 space-y-2">
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    Status: <span className={`rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(request.shareLink.status)}`}>
+                      {request.shareLink.status}
+                    </span>
+                  </p>
+                  {request.shareLink.revokedAt && (
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                      Revoked: {new Date(request.shareLink.revokedAt).toLocaleString()}
+                    </p>
+                  )}
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={() => router.push(`/links/${request.shareLink!.id}`)}
+                      className="rounded-md bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-50 dark:hover:bg-zinc-700"
+                    >
+                      View Link Details
+                    </button>
+                    {request.shareLink.status !== 'revoked' && request.shareLink.canRevoke && (
+                      <button
+                        onClick={handleRevokeLink}
+                        disabled={revoking}
+                        className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50 dark:bg-red-700 dark:hover:bg-red-800"
+                      >
+                        {revoking ? 'Revoking...' : 'Revoke Link'}
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>

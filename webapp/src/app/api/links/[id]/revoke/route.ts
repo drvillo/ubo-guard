@@ -21,9 +21,17 @@ export async function POST(
 
     const { id } = await params
 
-    // Get share link
+    // Get share link with share request relation
     const shareLink = await prisma.shareLink.findUnique({
       where: { id },
+      include: {
+        shareRequest: {
+          select: {
+            id: true,
+            createdById: true,
+          },
+        },
+      },
     })
 
     if (!shareLink) {
@@ -42,9 +50,15 @@ export async function POST(
       return NextResponse.json({ error: 'User profile not found' }, { status: 404 })
     }
 
-    // Delegates can only revoke links they created
-    if (access.role === 'delegate' && shareLink.createdById !== userProfile.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    // Delegates can revoke links they created OR links from their share requests
+    if (access.role === 'delegate') {
+      const canRevoke =
+        shareLink.createdById === userProfile.id ||
+        (shareLink.shareRequest?.createdById === userProfile.id)
+
+      if (!canRevoke) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+      }
     }
 
     // Check if already revoked

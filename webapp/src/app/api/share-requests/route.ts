@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/db/prisma'
 import { requireVaultAccess, canAccessDocType } from '@/lib/auth/authorization'
 import { logAuditEvent } from '@/lib/audit/audit-log'
@@ -151,22 +151,47 @@ export async function GET(request: NextRequest) {
 
     const shareRequests = await prisma.shareRequest.findMany({
       where,
+      include: {
+        creator: {
+          select: {
+            userId: true,
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     })
 
+    // Fetch creator emails for all requests
+    const adminClient = createAdminClient()
+    const requestsWithCreator = await Promise.all(
+      shareRequests.map(async (req) => {
+        let creatorEmail: string | null = null
+        if (req.creator?.userId) {
+          try {
+            const { data: creatorUser } = await adminClient.auth.admin.getUserById(req.creator.userId)
+            creatorEmail = creatorUser.user?.email || null
+          } catch (error) {
+            console.error('Error fetching creator email:', error)
+          }
+        }
+        return {
+          id: req.id,
+          vaultId: req.vaultId,
+          vendorLabel: req.vendorLabel,
+          vendorEmail: req.vendorEmail,
+          purposeNotes: req.purposeNotes,
+          requestedDocTypes: req.requestedDocTypes,
+          expiresAt: req.expiresAt,
+          status: req.status,
+          createdAt: req.createdAt,
+          updatedAt: req.updatedAt,
+          createdBy: creatorEmail,
+        }
+      })
+    )
+
     return NextResponse.json({
-      requests: shareRequests.map((req) => ({
-        id: req.id,
-        vaultId: req.vaultId,
-        vendorLabel: req.vendorLabel,
-        vendorEmail: req.vendorEmail,
-        purposeNotes: req.purposeNotes,
-        requestedDocTypes: req.requestedDocTypes,
-        expiresAt: req.expiresAt,
-        status: req.status,
-        createdAt: req.createdAt,
-        updatedAt: req.updatedAt,
-      })),
+      requests: requestsWithCreator,
     })
   } catch (error: any) {
     console.error('Error fetching share requests:', error)

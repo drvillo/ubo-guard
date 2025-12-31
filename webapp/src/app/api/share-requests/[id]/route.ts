@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/db/prisma'
 import { requireVaultAccess } from '@/lib/auth/authorization'
 
@@ -26,6 +26,15 @@ export async function GET(
       include: {
         vault: true,
         creator: true,
+        shareLink: {
+          select: {
+            id: true,
+            status: true,
+            revokedAt: true,
+            expiresAt: true,
+            createdById: true,
+          },
+        },
       },
     })
 
@@ -50,6 +59,25 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
+    // Determine if user can revoke the share link (if it exists)
+    // Owners can revoke any link, delegates can revoke links from their share requests
+    const canRevokeLink = shareRequest.shareLink
+      ? access.role === 'owner' ||
+        (access.role === 'delegate' && shareRequest.createdById === userProfile.id)
+      : false
+
+    // Get creator's email from Supabase Auth
+    let creatorEmail: string | null = null
+    if (shareRequest.creator?.userId) {
+      try {
+        const adminClient = createAdminClient()
+        const { data: creatorUser } = await adminClient.auth.admin.getUserById(shareRequest.creator.userId)
+        creatorEmail = creatorUser.user?.email || null
+      } catch (error) {
+        console.error('Error fetching creator email:', error)
+      }
+    }
+
     return NextResponse.json({
       id: shareRequest.id,
       vaultId: shareRequest.vaultId,
@@ -61,6 +89,16 @@ export async function GET(
       status: shareRequest.status,
       createdAt: shareRequest.createdAt,
       updatedAt: shareRequest.updatedAt,
+      createdBy: creatorEmail,
+      shareLink: shareRequest.shareLink
+        ? {
+            id: shareRequest.shareLink.id,
+            status: shareRequest.shareLink.status,
+            revokedAt: shareRequest.shareLink.revokedAt,
+            expiresAt: shareRequest.shareLink.expiresAt,
+            canRevoke: canRevokeLink,
+          }
+        : null,
     })
   } catch (error: any) {
     console.error('Error fetching share request:', error)
