@@ -28,7 +28,6 @@ model UserProfile {
   createdRequests  ShareRequest[]
   createdLinks     ShareLink[]
   approvedLinks    ShareLink[]       @relation("LinkApprover")
-  auditEvents      AuditEvent[]
 
   @@map("user_profiles")
 }
@@ -176,7 +175,7 @@ model ShareLink {
   purposeNotes          String?
   expiresAt             DateTime
   revokedAt             DateTime?
-  tokenHash             String          // SHA-256 hash of link token (with pepper)
+  tokenHash             String          @unique // SHA-256 hash of link token (with pepper)
   encryptedLskForVendor String?         // Base64-encoded: LSK encrypted with VS-derived key (nullable until approved)
   lskSalt               String?         // Base64-encoded: salt for HKDF derivation (nullable until approved)
   lskNonce              String?         // Base64-encoded: nonce/IV for LSK wrapping (nullable until approved)
@@ -236,22 +235,25 @@ enum AuditActorType {
 }
 
 // Audit events (append-only log)
+// Note: actorId is a polymorphic identifier interpreted based on actorType:
+//   - owner/delegate: UserProfile.id
+//   - vendor: vendorEmailHash (pseudonymized)
+//   - system: null
 model AuditEvent {
-  id                  String          @id @default(uuid())
-  vaultId             String
-  actorType           AuditActorType
-  actorId             String          // UserProfile.id (or 'system' for system events)
-  eventType           AuditEventType
-  linkId              String?         // Share link ID (nullable, for future use)
-  docType             DocumentType?   // Document type involved (nullable)
-  watermarkReferenceId String?       // Watermark reference (nullable, for future use)
-  userAgent           String?
-  ip                  String?
-  createdAt           DateTime        @default(now())
+  id                   String          @id @default(uuid())
+  vaultId              String
+  actorType            AuditActorType
+  actorId              String?         // Polymorphic: UserProfile.id for owner/delegate, vendorEmailHash for vendor, null for system
+  eventType            AuditEventType
+  linkId               String?         // Share link ID (nullable)
+  docType              DocumentType?   // Document type involved (nullable)
+  watermarkReferenceId String?         // Watermark reference (nullable, for future use)
+  userAgent            String?
+  ip                   String?
+  createdAt            DateTime        @default(now())
 
-  vault               Vault        @relation(fields: [vaultId], references: [id], onDelete: Cascade)
-  actor               UserProfile? @relation(fields: [actorId], references: [id])
-  shareLink           ShareLink?   @relation(fields: [linkId], references: [id])
+  vault     Vault      @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  shareLink ShareLink? @relation(fields: [linkId], references: [id])
 
   @@map("audit_events")
 }

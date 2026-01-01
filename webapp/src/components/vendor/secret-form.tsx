@@ -42,7 +42,14 @@ export function SecretForm({
 
       onLskDecrypted(lsk)
     } catch (err: any) {
-      setError(err.message || 'Failed to decrypt. Please check your vendor secret.')
+      // Provide more helpful error message
+      if (err.message?.includes('checksum')) {
+        setError('Invalid vendor secret: checksum validation failed. Please check your vendor secret.')
+      } else if (err.message?.includes('Invalid character')) {
+        setError('Invalid vendor secret: contains invalid characters. Please check your vendor secret.')
+      } else {
+        setError('Failed to decrypt. Please verify your vendor secret matches exactly what was sent in the email.')
+      }
     } finally {
       setLoading(false)
     }

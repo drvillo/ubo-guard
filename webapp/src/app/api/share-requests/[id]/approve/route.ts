@@ -176,8 +176,8 @@ export async function POST(
       data: { status: 'approved' },
     })
 
-    // Construct share link URL
-    const linkUrl = `${appUrl}/links/${linkToken}`
+    // Construct share link URL (vendor access route)
+    const linkUrl = `${appUrl}/v/${linkToken}`
 
     // Send vendor secret email (VS never stored, only emailed)
     try {

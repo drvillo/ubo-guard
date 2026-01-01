@@ -368,7 +368,7 @@ export async function deriveWrapKeyFromVendorSecret(
     ['deriveKey']
   )
 
-  return crypto.subtle.deriveKey(
+  const wrapKey = await crypto.subtle.deriveKey(
     {
       name: 'HKDF',
       salt: normalizeUint8Array(salt),
@@ -380,6 +380,8 @@ export async function deriveWrapKeyFromVendorSecret(
     false,
     ['encrypt', 'decrypt']
   )
+
+  return wrapKey
 }
 
 /**

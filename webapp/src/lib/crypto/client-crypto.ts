@@ -177,16 +177,22 @@ export async function decryptLskWithVendorSecret(
   const vendorSecretBytes = vendorSecretToBytes(normalizedVS)
 
   // Decode base64 strings
-  const encryptedLskWithAuthTag = base64ToUint8Array(encryptedLskBase64)
+  const encryptedLskWithMetadata = base64ToUint8Array(encryptedLskBase64)
   const lskSalt = base64ToUint8Array(lskSaltBase64)
-  const lskNonce = base64ToUint8Array(lskNonceBase64)
+  const lskNonceSeparate = base64ToUint8Array(lskNonceBase64)
 
   // Extract encrypted LSK components
-  // Format: [encryptedLsk (32 bytes)][authTag (16 bytes)]
-  // Nonce is stored separately as lskNonce
+  // Format: [encryptedLsk (32 bytes)][nonce (12 bytes)][authTag (16 bytes)]
+  // Use the nonce from the blob since that's what was actually used during encryption
+  const encryptedLskLength = 32
+  const nonceLength = 12
   const authTagLength = 16
-  const encryptedLsk = encryptedLskWithAuthTag.slice(0, -authTagLength)
-  const lskAuthTag = encryptedLskWithAuthTag.slice(-authTagLength)
+  const encryptedLsk = encryptedLskWithMetadata.slice(0, encryptedLskLength)
+  const lskNonceFromBlob = encryptedLskWithMetadata.slice(encryptedLskLength, encryptedLskLength + nonceLength)
+  const lskAuthTag = encryptedLskWithMetadata.slice(-authTagLength)
+  
+  // Use the nonce from the blob (this is what was used during encryption)
+  const lskNonce = lskNonceFromBlob
 
   // Unwrap LSK with vendor secret
   const lsk = await unwrapLskWithVendorSecret(

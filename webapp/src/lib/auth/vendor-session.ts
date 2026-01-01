@@ -102,14 +102,29 @@ export async function validateVendorSession(userAgent: string | null): Promise<V
   }
 
   try {
-    const [payload, signature] = cookie.value.split(':')
+    // Split from the right since payload JSON may contain colons, but signature (hex) never does
+    const lastColonIndex = cookie.value.lastIndexOf(':')
+    if (lastColonIndex === -1) {
+      return null
+    }
+    const payload = cookie.value.slice(0, lastColonIndex)
+    const signature = cookie.value.slice(lastColonIndex + 1)
     if (!payload || !signature) {
       return null
     }
 
     // Verify signature
     const expectedSignature = signSession(payload)
-    if (!timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
+    let signatureBuffer: Buffer
+    let expectedSignatureBuffer: Buffer
+    try {
+      signatureBuffer = Buffer.from(signature, 'hex')
+      expectedSignatureBuffer = Buffer.from(expectedSignature, 'hex')
+    } catch {
+      return null
+    }
+    const signatureValid = timingSafeEqual(signatureBuffer, expectedSignatureBuffer)
+    if (!signatureValid) {
       return null
     }
 

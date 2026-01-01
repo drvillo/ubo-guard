@@ -4,11 +4,16 @@ import { headers } from 'next/headers'
 
 /**
  * Log an audit event
+ *
+ * @param actorId - Polymorphic identifier interpreted based on actorType:
+ *   - owner/delegate: UserProfile.id
+ *   - vendor: vendorEmailHash (pseudonymized)
+ *   - system: null/undefined
  */
 export async function logAuditEvent(params: {
   vaultId: string
   actorType: AuditActorType
-  actorId: string
+  actorId?: string | null
   eventType: AuditEventType
   linkId?: string | null
   docType?: DocumentType | null

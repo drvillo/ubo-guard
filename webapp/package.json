@@ -18,7 +18,7 @@
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
     "@noble/hashes": "^2.0.1",
-    "@prisma/client": "^5.22.0",
+    "@prisma/client": "5.22.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.47.10",
     "crockford-base32": "^2.0.0",

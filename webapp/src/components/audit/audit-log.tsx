@@ -2,7 +2,7 @@
 
 interface AuditEvent {
   id: string
-  actorType: 'owner' | 'delegate' | 'system'
+  actorType: 'owner' | 'delegate' | 'system' | 'vendor'
   eventType: string
   docType: string | null
   createdAt: string
