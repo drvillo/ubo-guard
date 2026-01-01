@@ -58,10 +58,10 @@ describe('/api/share-requests', () => {
             error: null,
           }),
         },
-      })
+      } as any)
 
       const mockUserProfile = { id: 'profile-123', userId: 'user-123' }
-      mockedPrisma.userProfile.findUnique.mockResolvedValue(mockUserProfile as any)
+      ;(mockedPrisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile as any)
       mockedRequireVaultAccess.mockResolvedValue({ vaultId: 'vault-123', role: 'owner' } as any)
 
       const mockRequest = {
@@ -74,7 +74,7 @@ describe('/api/share-requests', () => {
         status: 'pending',
         createdAt: new Date(),
       }
-      mockedPrisma.shareRequest.create.mockResolvedValue(mockRequest as any)
+      ;(mockedPrisma.shareRequest.create as any).mockResolvedValue(mockRequest as any)
       mockedLogAuditEvent.mockResolvedValue(undefined)
 
       const request = new NextRequest('http://localhost/api/share-requests', {
@@ -107,10 +107,10 @@ describe('/api/share-requests', () => {
             error: null,
           }),
         },
-      })
+      } as any)
 
       const mockUserProfile = { id: 'profile-123', userId: 'user-123' }
-      mockedPrisma.userProfile.findUnique.mockResolvedValue(mockUserProfile as any)
+      ;(mockedPrisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile as any)
       mockedRequireVaultAccess.mockResolvedValue({ vaultId: 'vault-123', role: 'delegate' } as any)
       mockedCanAccessDocType.mockResolvedValue(true)
 
@@ -123,7 +123,7 @@ describe('/api/share-requests', () => {
         status: 'pending',
         createdAt: new Date(),
       }
-      mockedPrisma.shareRequest.create.mockResolvedValue(mockRequest as any)
+      ;(mockedPrisma.shareRequest.create as any).mockResolvedValue(mockRequest as any)
       mockedLogAuditEvent.mockResolvedValue(undefined)
 
       const request = new NextRequest('http://localhost/api/share-requests', {
@@ -152,7 +152,7 @@ describe('/api/share-requests', () => {
       } as any)
 
       const mockUserProfile = { id: 'profile-123', userId: 'user-123' }
-      mockedPrisma.userProfile.findUnique.mockResolvedValue(mockUserProfile as any)
+      ;(mockedPrisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile as any)
       mockedRequireVaultAccess.mockResolvedValue({ vaultId: 'vault-123', role: 'delegate' } as any)
       mockedCanAccessDocType.mockResolvedValue(false)
 
@@ -194,7 +194,7 @@ describe('/api/share-requests', () => {
       } as any)
 
       const mockUserProfile = { id: 'profile-123', userId: 'user-123' }
-      mockedPrisma.userProfile.findUnique.mockResolvedValue(mockUserProfile as any)
+      ;(mockedPrisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile as any)
       mockedRequireVaultAccess.mockResolvedValue({ vaultId: 'vault-123', role: 'owner' } as any)
 
       const mockRequests = [
@@ -210,7 +210,7 @@ describe('/api/share-requests', () => {
           creator: { userId: 'creator-user-123' },
         },
       ]
-      mockedPrisma.shareRequest.findMany.mockResolvedValue(mockRequests as any)
+      ;(mockedPrisma.shareRequest.findMany as any).mockResolvedValue(mockRequests as any)
 
       const request = new NextRequest('http://localhost/api/share-requests?vaultId=vault-123')
 
@@ -248,11 +248,11 @@ describe('/api/share-requests', () => {
       } as any)
 
       const mockUserProfile = { id: 'profile-123', userId: 'user-123' }
-      mockedPrisma.userProfile.findUnique.mockResolvedValue(mockUserProfile as any)
+      ;(mockedPrisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile as any)
       mockedRequireVaultAccess.mockResolvedValue({ vaultId: 'vault-123', role: 'delegate' } as any)
 
-      const mockRequests = []
-      mockedPrisma.shareRequest.findMany.mockResolvedValue(mockRequests as any)
+      const mockRequests: any[] = []
+      ;(mockedPrisma.shareRequest.findMany as any).mockResolvedValue(mockRequests)
 
       const request = new NextRequest('http://localhost/api/share-requests?vaultId=vault-123')
 

@@ -59,7 +59,7 @@ describe('/api/links/[id]', () => {
         },
       } as any)
 
-      mockedPrisma.userProfile.findUnique.mockResolvedValue(mockUserProfile as any)
+      ;(mockedPrisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile as any)
 
       mockedRequireVaultAccess.mockResolvedValue({
         vaultId: 'vault-123',
@@ -93,7 +93,7 @@ describe('/api/links/[id]', () => {
         ],
       }
 
-      mockedPrisma.shareLink.findUnique.mockResolvedValue(mockShareLink as any)
+      ;(mockedPrisma.shareLink.findUnique as any).mockResolvedValue(mockShareLink as any)
 
       const request = new NextRequest(`http://localhost/api/links/${linkId}`)
       const params = Promise.resolve({ id: linkId })
@@ -120,7 +120,7 @@ describe('/api/links/[id]', () => {
         },
       } as any)
 
-      mockedPrisma.userProfile.findUnique.mockResolvedValue(mockUserProfile as any)
+      ;(mockedPrisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile as any)
 
       mockedRequireVaultAccess.mockResolvedValue({
         vaultId: 'vault-123',
@@ -154,7 +154,7 @@ describe('/api/links/[id]', () => {
         ],
       }
 
-      mockedPrisma.shareLink.findUnique.mockResolvedValue(mockShareLink as any)
+      ;(mockedPrisma.shareLink.findUnique as any).mockResolvedValue(mockShareLink as any)
 
       const request = new NextRequest(`http://localhost/api/links/${linkId}`)
       const params = Promise.resolve({ id: linkId })
@@ -181,7 +181,7 @@ describe('/api/links/[id]', () => {
         },
       } as any)
 
-      mockedPrisma.userProfile.findUnique.mockResolvedValue(mockUserProfile as any)
+      ;(mockedPrisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile as any)
 
       mockedRequireVaultAccess.mockResolvedValue({
         vaultId: 'vault-123',
@@ -204,7 +204,7 @@ describe('/api/links/[id]', () => {
         documents: [],
       }
 
-      mockedPrisma.shareLink.findUnique.mockResolvedValue(mockShareLink as any)
+      ;(mockedPrisma.shareLink.findUnique as any).mockResolvedValue(mockShareLink as any)
 
       const request = new NextRequest(`http://localhost/api/links/${linkId}`)
       const params = Promise.resolve({ id: linkId })
@@ -275,7 +275,7 @@ describe('/api/links/[id]', () => {
         ],
       }
 
-      mockedPrisma.shareLink.findFirst.mockResolvedValue(mockShareLink as any)
+      ;(mockedPrisma.shareLink.findFirst as any).mockResolvedValue(mockShareLink as any)
 
       const request = new NextRequest(`http://localhost/api/links/${token}`)
       const params = Promise.resolve({ id: token })
@@ -312,7 +312,7 @@ describe('/api/links/[id]', () => {
         documents: [],
       }
 
-      mockedPrisma.shareLink.findFirst.mockResolvedValue(mockShareLink as any)
+      ;(mockedPrisma.shareLink.findFirst as any).mockResolvedValue(mockShareLink as any)
 
       const request = new NextRequest(`http://localhost/api/links/${token}`)
       const params = Promise.resolve({ id: token })
@@ -346,7 +346,7 @@ describe('/api/links/[id]', () => {
         documents: [],
       }
 
-      mockedPrisma.shareLink.findFirst.mockResolvedValue(mockShareLink as any)
+      ;(mockedPrisma.shareLink.findFirst as any).mockResolvedValue(mockShareLink as any)
 
       const request = new NextRequest(`http://localhost/api/links/${token}`)
       const params = Promise.resolve({ id: token })

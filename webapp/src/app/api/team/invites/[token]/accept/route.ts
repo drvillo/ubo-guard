@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-import { prisma } from '@/lib/db/prisma'
+import { prisma as db } from '@/lib/db/prisma'
+import { Prisma as PrismaTypes } from '@prisma/client'
 import { hashToken } from '@/lib/crypto/token-hash'
 import { logAuditEvent } from '@/lib/audit/audit-log'
 
@@ -24,7 +25,7 @@ async function acceptInvite(token: string) {
     const tokenHash = hashToken(token)
 
     // Find the invite
-    const invite = await prisma.teamInvite.findFirst({
+    const invite = await db.teamInvite.findFirst({
       where: {
         tokenHash,
         acceptedAt: null,
@@ -51,18 +52,18 @@ async function acceptInvite(token: string) {
     }
 
     // Get or create user profile
-    let userProfile = await prisma.userProfile.findUnique({
+    let userProfile = await db.userProfile.findUnique({
       where: { userId: user.id },
     })
 
     if (!userProfile) {
-      userProfile = await prisma.userProfile.create({
+      userProfile = await db.userProfile.create({
         data: { userId: user.id },
       })
     }
 
     // Check if already a member
-    const existingMembership = await prisma.teamMembership.findUnique({
+    const existingMembership = await db.teamMembership.findUnique({
       where: {
         vaultId_userId: {
           vaultId: invite.vaultId,
@@ -76,17 +77,17 @@ async function acceptInvite(token: string) {
     }
 
     // Create team membership
-    const membership = await prisma.teamMembership.create({
+    const membership = await db.teamMembership.create({
       data: {
         vaultId: invite.vaultId,
         userId: userProfile.id,
         role: invite.role,
-        permissionsJson: invite.permissionsJson,
+        permissionsJson: invite.permissionsJson as PrismaTypes.InputJsonValue,
       },
     })
 
     // Mark invite as accepted
-    await prisma.teamInvite.update({
+    await db.teamInvite.update({
       where: { id: invite.id },
       data: {
         acceptedAt: new Date(),

@@ -47,9 +47,9 @@ describe('/api/vault/init', () => {
     } as any)
 
     const mockUserProfile = { id: 'profile-123', userId: 'user-123' }
-    mockedPrisma.userProfile.findUnique.mockResolvedValue(mockUserProfile as any)
-    mockedPrisma.vault.findUnique.mockResolvedValue(null)
-    mockedPrisma.vault.create.mockResolvedValue({
+    ;(mockedPrisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile as any)
+    ;(mockedPrisma.vault.findUnique as any).mockResolvedValue(null)
+    ;(mockedPrisma.vault.create as any).mockResolvedValue({
       id: 'vault-123',
       ownerId: 'profile-123',
       createdAt: new Date(),
@@ -110,8 +110,8 @@ describe('/api/vault/init', () => {
     } as any)
 
     const mockUserProfile = { id: 'profile-123', userId: 'user-123' }
-    mockedPrisma.userProfile.findUnique.mockResolvedValue(mockUserProfile as any)
-    mockedPrisma.vault.findUnique.mockResolvedValue({ id: 'existing-vault' } as any)
+    ;(mockedPrisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile as any)
+    ;(mockedPrisma.vault.findUnique as any).mockResolvedValue({ id: 'existing-vault' } as any)
 
     const request = new NextRequest('http://localhost/api/vault/init', {
       method: 'POST',

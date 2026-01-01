@@ -30,7 +30,7 @@ describe('Authorization Helpers', () => {
         teamMemberships: [],
       }
 
-      prisma.userProfile.findUnique.mockResolvedValue(mockUserProfile)
+      ;(prisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile)
 
       const access = await getUserVaultAccess('user-123')
 
@@ -58,7 +58,7 @@ describe('Authorization Helpers', () => {
         ],
       }
 
-      prisma.userProfile.findUnique.mockResolvedValue(mockUserProfile)
+      ;(prisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile)
 
       const access = await getUserVaultAccess('user-123')
 
@@ -73,7 +73,7 @@ describe('Authorization Helpers', () => {
     })
 
     it('should return empty array if user profile not found', async () => {
-      prisma.userProfile.findUnique.mockResolvedValue(null)
+      ;(prisma.userProfile.findUnique as any).mockResolvedValue(null)
 
       const access = await getUserVaultAccess('user-123')
 
@@ -92,7 +92,7 @@ describe('Authorization Helpers', () => {
         teamMemberships: [],
       }
 
-      prisma.userProfile.findUnique.mockResolvedValue(mockUserProfile)
+      ;(prisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile)
 
       const access = await requireVaultAccess('vault-123', 'user-123')
 
@@ -110,7 +110,7 @@ describe('Authorization Helpers', () => {
         teamMemberships: [],
       }
 
-      prisma.userProfile.findUnique.mockResolvedValue(mockUserProfile)
+      ;(prisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile)
 
       await expect(requireVaultAccess('vault-999', 'user-123')).rejects.toThrow('Unauthorized')
     })
@@ -129,7 +129,7 @@ describe('Authorization Helpers', () => {
         ],
       }
 
-      prisma.userProfile.findUnique.mockResolvedValue(mockUserProfile)
+      ;(prisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile)
 
       await expect(requireVaultAccess('vault-456', 'user-123', 'owner')).rejects.toThrow('Unauthorized')
     })
@@ -146,7 +146,7 @@ describe('Authorization Helpers', () => {
         teamMemberships: [],
       }
 
-      prisma.userProfile.findUnique.mockResolvedValue(mockUserProfile)
+      ;(prisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile)
 
       const isOwner = await isVaultOwner('vault-123', 'user-123')
 
@@ -167,7 +167,7 @@ describe('Authorization Helpers', () => {
         ],
       }
 
-      prisma.userProfile.findUnique.mockResolvedValue(mockUserProfile)
+      ;(prisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile)
 
       const isOwner = await isVaultOwner('vault-456', 'user-123')
 
@@ -186,7 +186,7 @@ describe('Authorization Helpers', () => {
         teamMemberships: [],
       }
 
-      prisma.userProfile.findUnique.mockResolvedValue(mockUserProfile)
+      ;(prisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile)
 
       const canAccess = await canAccessDocType('vault-123', 'user-123', 'ID')
 
@@ -207,7 +207,7 @@ describe('Authorization Helpers', () => {
         ],
       }
 
-      prisma.userProfile.findUnique.mockResolvedValue(mockUserProfile)
+      ;(prisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile)
 
       const canAccess = await canAccessDocType('vault-456', 'user-123', 'ID')
 
@@ -228,7 +228,7 @@ describe('Authorization Helpers', () => {
         ],
       }
 
-      prisma.userProfile.findUnique.mockResolvedValue(mockUserProfile)
+      ;(prisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile)
 
       const canAccess = await canAccessDocType('vault-456', 'user-123', 'SourceOfWealth')
 

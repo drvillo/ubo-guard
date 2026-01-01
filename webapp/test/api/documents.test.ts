@@ -55,7 +55,7 @@ describe('/api/documents', () => {
             error: null,
           }),
         },
-      })
+      } as any)
 
       mockedGetUserVaultAccess.mockResolvedValue([
         {
@@ -77,7 +77,7 @@ describe('/api/documents', () => {
           dekNonce: 'nonce',
         },
       ]
-      mockedPrisma.document.findMany.mockResolvedValue(mockDocuments as any)
+      ;(mockedPrisma.document.findMany as any).mockResolvedValue(mockDocuments as any)
 
       const request = new NextRequest('http://localhost/api/documents?vaultId=vault-123')
 
@@ -120,7 +120,7 @@ describe('/api/documents', () => {
           dekNonce: 'nonce',
         },
       ]
-      mockedPrisma.document.findMany.mockResolvedValue(mockDocuments as any)
+      ;(mockedPrisma.document.findMany as any).mockResolvedValue(mockDocuments as any)
 
       const request = new NextRequest('http://localhost/api/documents?vaultId=vault-123')
 
@@ -153,7 +153,7 @@ describe('/api/documents', () => {
         dekNonce: 'nonce',
         ciphertextChecksum: 'checksum',
       }
-      mockedPrisma.document.findUnique.mockResolvedValue(mockDocument as any)
+      ;(mockedPrisma.document.findUnique as any).mockResolvedValue(mockDocument as any)
       mockedRequireVaultAccess.mockResolvedValue({ vaultId: 'vault-123', role: 'owner' } as any)
 
       const request = new NextRequest('http://localhost/api/documents/doc-1/download-info')
@@ -180,7 +180,7 @@ describe('/api/documents', () => {
         id: 'doc-1',
         vaultId: 'vault-123',
       }
-      mockedPrisma.document.findUnique.mockResolvedValue(mockDocument as any)
+      ;(mockedPrisma.document.findUnique as any).mockResolvedValue(mockDocument as any)
       mockedRequireVaultAccess.mockRejectedValue(new Error('Unauthorized: Requires role owner'))
 
       const request = new NextRequest('http://localhost/api/documents/doc-1/download-info')
@@ -207,7 +207,7 @@ describe('/api/documents', () => {
         vaultId: 'vault-123',
         storagePath: 'path/to/doc',
       }
-      mockedPrisma.document.findUnique.mockResolvedValue(mockDocument as any)
+      ;(mockedPrisma.document.findUnique as any).mockResolvedValue(mockDocument as any)
       mockedRequireVaultAccess.mockResolvedValue({ vaultId: 'vault-123', role: 'owner' } as any)
       mockedDownloadCiphertext.mockResolvedValue(Buffer.from('ciphertext'))
 
@@ -234,7 +234,7 @@ describe('/api/documents', () => {
         id: 'doc-1',
         vaultId: 'vault-123',
       }
-      mockedPrisma.document.findUnique.mockResolvedValue(mockDocument as any)
+      ;(mockedPrisma.document.findUnique as any).mockResolvedValue(mockDocument as any)
       mockedRequireVaultAccess.mockRejectedValue(new Error('Unauthorized: Requires role owner'))
 
       const request = new NextRequest('http://localhost/api/documents/doc-1/ciphertext')

@@ -64,10 +64,10 @@ describe('/api/team/invites', () => {
           error: null,
         }),
       },
-    })
+    } as any)
 
     const mockUserProfile = { id: 'profile-123', userId: 'user-123' }
-    mockedPrisma.userProfile.findUnique.mockResolvedValue(mockUserProfile as any)
+    ;(mockedPrisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile as any)
     mockedRequireVaultAccess.mockResolvedValue({ vaultId: 'vault-123', role: 'owner' } as any)
 
     const mockInvite = {
@@ -76,7 +76,7 @@ describe('/api/team/invites', () => {
       role: 'delegate',
       expiresAt: new Date(),
     }
-    mockedPrisma.teamInvite.create.mockResolvedValue(mockInvite as any)
+    ;(mockedPrisma.teamInvite.create as any).mockResolvedValue(mockInvite as any)
     mockedSendInviteEmail.mockResolvedValue(undefined)
     mockedLogAuditEvent.mockResolvedValue(undefined)
 
@@ -109,7 +109,7 @@ describe('/api/team/invites', () => {
           error: new Error('Not authenticated'),
         }),
       },
-    })
+    } as any)
 
     const request = new NextRequest('http://localhost/api/team/invites', {
       method: 'POST',
@@ -134,7 +134,7 @@ describe('/api/team/invites', () => {
           error: null,
         }),
       },
-    })
+    } as any)
 
     mockedRequireVaultAccess.mockRejectedValue(new Error('Unauthorized: Requires role owner'))
 
@@ -161,7 +161,7 @@ describe('/api/team/invites', () => {
           error: null,
         }),
       },
-    })
+    } as any)
 
     const request = new NextRequest('http://localhost/api/team/invites', {
       method: 'POST',
