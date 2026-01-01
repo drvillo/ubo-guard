@@ -8,11 +8,18 @@ interface RequestFormProps {
 }
 
 export function RequestForm({ vaultId, onRequestCreated }: RequestFormProps) {
+  // Calculate default expiry date (current date + 10 days) once on component mount
+  const getDefaultExpiry = () => {
+    const defaultExpiry = new Date()
+    defaultExpiry.setDate(defaultExpiry.getDate() + 10)
+    return defaultExpiry.toISOString().split('T')[0]
+  }
+
   const [vendorLabel, setVendorLabel] = useState('')
   const [vendorEmail, setVendorEmail] = useState('')
   const [purposeNotes, setPurposeNotes] = useState('')
   const [requestedDocTypes, setRequestedDocTypes] = useState<string[]>([])
-  const [expiresAt, setExpiresAt] = useState('')
+  const [expiresAt, setExpiresAt] = useState(getDefaultExpiry)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -76,7 +83,7 @@ export function RequestForm({ vaultId, onRequestCreated }: RequestFormProps) {
       setVendorEmail('')
       setPurposeNotes('')
       setRequestedDocTypes([])
-      setExpiresAt('')
+      setExpiresAt(getDefaultExpiry())
       onRequestCreated()
     } catch (err: any) {
       setError(err.message || 'Failed to create share request')
@@ -84,11 +91,6 @@ export function RequestForm({ vaultId, onRequestCreated }: RequestFormProps) {
       setSubmitting(false)
     }
   }
-
-  // Set default expiry to 30 days from now
-  const defaultExpiry = new Date()
-  defaultExpiry.setDate(defaultExpiry.getDate() + 30)
-  const defaultExpiryString = defaultExpiry.toISOString().split('T')[0]
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -170,7 +172,7 @@ export function RequestForm({ vaultId, onRequestCreated }: RequestFormProps) {
         <input
           id="expiresAt"
           type="date"
-          value={expiresAt || defaultExpiryString}
+          value={expiresAt}
           onChange={(e) => setExpiresAt(e.target.value)}
           min={new Date().toISOString().split('T')[0]}
           required
