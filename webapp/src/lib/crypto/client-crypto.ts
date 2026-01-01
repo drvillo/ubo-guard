@@ -14,10 +14,13 @@ import {
   computeChecksum,
   uint8ArrayToBase64,
   base64ToUint8Array,
+  unwrapLskWithVendorSecret,
+  unwrapDekWithLsk,
   type KdfParams,
   type EncryptedDocument,
   type EncryptedDek,
 } from './vault-crypto'
+import { validateAndNormalizeVendorSecret, vendorSecretToBytes } from './vendor-secret'
 
 /**
  * Default KDF parameters for Argon2id
@@ -137,6 +140,105 @@ export async function decryptFileForDownload(
   // Format: [ciphertext][nonce (12 bytes)][authTag (16 bytes)]
   const nonceLength = 12
   const authTagLength = 16
+  const ciphertextOnly = ciphertextWithMetadata.slice(0, -(nonceLength + authTagLength))
+  const docNonce = ciphertextWithMetadata.slice(
+    -(nonceLength + authTagLength),
+    -authTagLength
+  )
+  const docAuthTag = ciphertextWithMetadata.slice(-authTagLength)
+
+  // Decrypt document
+  const plaintext = await decryptDocument(
+    {
+      ciphertext: ciphertextOnly,
+      nonce: docNonce,
+      authTag: docAuthTag,
+    },
+    dek
+  )
+
+  return plaintext
+}
+
+/**
+ * Decrypt LSK with vendor secret
+ * Used in Step 4 for vendor access: derive wrap key from VS, decrypt LSK
+ * 
+ * Format: encryptedLskForVendor contains [encryptedDek][authTag] (nonce stored separately)
+ */
+export async function decryptLskWithVendorSecret(
+  encryptedLskBase64: string,
+  lskSaltBase64: string,
+  lskNonceBase64: string,
+  vendorSecret: string
+): Promise<Uint8Array> {
+  // Validate and normalize vendor secret
+  const normalizedVS = validateAndNormalizeVendorSecret(vendorSecret)
+  const vendorSecretBytes = vendorSecretToBytes(normalizedVS)
+
+  // Decode base64 strings
+  const encryptedLskWithAuthTag = base64ToUint8Array(encryptedLskBase64)
+  const lskSalt = base64ToUint8Array(lskSaltBase64)
+  const lskNonce = base64ToUint8Array(lskNonceBase64)
+
+  // Extract encrypted LSK components
+  // Format: [encryptedLsk (32 bytes)][authTag (16 bytes)]
+  // Nonce is stored separately as lskNonce
+  const authTagLength = 16
+  const encryptedLsk = encryptedLskWithAuthTag.slice(0, -authTagLength)
+  const lskAuthTag = encryptedLskWithAuthTag.slice(-authTagLength)
+
+  // Unwrap LSK with vendor secret
+  const lsk = await unwrapLskWithVendorSecret(
+    {
+      encryptedDek: encryptedLsk,
+      nonce: lskNonce,
+      authTag: lskAuthTag,
+    },
+    vendorSecretBytes,
+    lskSalt
+  )
+
+  return lsk
+}
+
+/**
+ * Decrypt document for vendor
+ * Used in Step 4: decrypt DEK with LSK, then decrypt document with DEK
+ * 
+ * Format: encryptedDekForLink contains [encryptedDek][authTag] (nonce stored separately)
+ */
+export async function decryptDocumentForVendor(
+  ciphertextBase64: string,
+  encryptedDekForLinkBase64: string,
+  dekForLinkNonceBase64: string,
+  lsk: Uint8Array
+): Promise<Uint8Array> {
+  // Decode base64 strings
+  const ciphertextWithMetadata = base64ToUint8Array(ciphertextBase64)
+  const encryptedDekForLinkWithAuthTag = base64ToUint8Array(encryptedDekForLinkBase64)
+  const dekForLinkNonce = base64ToUint8Array(dekForLinkNonceBase64)
+
+  // Extract encrypted DEK components
+  // Format: [encryptedDek (32 bytes)][authTag (16 bytes)]
+  // Nonce is stored separately as dekForLinkNonce
+  const authTagLength = 16
+  const encryptedDek = encryptedDekForLinkWithAuthTag.slice(0, -authTagLength)
+  const dekAuthTag = encryptedDekForLinkWithAuthTag.slice(-authTagLength)
+
+  // Unwrap DEK with LSK
+  const dek = await unwrapDekWithLsk(
+    {
+      encryptedDek,
+      nonce: dekForLinkNonce,
+      authTag: dekAuthTag,
+    },
+    lsk
+  )
+
+  // Extract document components
+  // Format: [ciphertext][nonce (12 bytes)][authTag (16 bytes)]
+  const nonceLength = 12
   const ciphertextOnly = ciphertextWithMetadata.slice(0, -(nonceLength + authTagLength))
   const docNonce = ciphertextWithMetadata.slice(
     -(nonceLength + authTagLength),

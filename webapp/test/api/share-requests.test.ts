@@ -6,12 +6,13 @@ import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { POST, GET } from '@/app/api/share-requests/route'
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 import { requireVaultAccess, canAccessDocType } from '@/lib/auth/authorization'
 import { logAuditEvent } from '@/lib/audit/audit-log'
 
 vi.mock('@/lib/supabase/server', () => ({
   createServerClient: vi.fn(),
+  createAdminClient: vi.fn(),
 }))
 
 vi.mock('@/lib/db/prisma', () => ({
@@ -36,6 +37,7 @@ vi.mock('@/lib/audit/audit-log', () => ({
 }))
 
 const mockedCreateServerClient = vi.mocked(createServerClient)
+const mockedCreateAdminClient = vi.mocked(createAdminClient)
 const mockedPrisma = vi.mocked(prisma)
 const mockedRequireVaultAccess = vi.mocked(requireVaultAccess)
 const mockedCanAccessDocType = vi.mocked(canAccessDocType)
@@ -181,6 +183,16 @@ describe('/api/share-requests', () => {
         },
       } as any)
 
+      mockedCreateAdminClient.mockReturnValue({
+        auth: {
+          admin: {
+            getUserById: vi.fn().mockResolvedValue({
+              data: { user: { email: 'creator@example.com' } },
+            }),
+          },
+        },
+      } as any)
+
       const mockUserProfile = { id: 'profile-123', userId: 'user-123' }
       mockedPrisma.userProfile.findUnique.mockResolvedValue(mockUserProfile as any)
       mockedRequireVaultAccess.mockResolvedValue({ vaultId: 'vault-123', role: 'owner' } as any)
@@ -195,6 +207,7 @@ describe('/api/share-requests', () => {
           status: 'pending',
           createdAt: new Date(),
           updatedAt: new Date(),
+          creator: { userId: 'creator-user-123' },
         },
       ]
       mockedPrisma.shareRequest.findMany.mockResolvedValue(mockRequests as any)
@@ -221,6 +234,16 @@ describe('/api/share-requests', () => {
             data: { user: mockUser },
             error: null,
           }),
+        },
+      } as any)
+
+      mockedCreateAdminClient.mockReturnValue({
+        auth: {
+          admin: {
+            getUserById: vi.fn().mockResolvedValue({
+              data: { user: { email: 'creator@example.com' } },
+            }),
+          },
         },
       } as any)
 

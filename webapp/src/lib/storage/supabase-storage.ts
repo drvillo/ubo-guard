@@ -92,3 +92,29 @@ export function getStoragePath(vaultId: string, docType: string, docId: string):
   return `vaults/${vaultId}/${docType}/${docId}.bin`
 }
 
+/**
+ * Generate a signed URL for ciphertext access
+ * Used for vendor access: generates short-lived signed URL after session validation
+ * Default expiration: 5 minutes (300 seconds)
+ */
+export async function generateSignedCiphertextUrl(
+  path: string,
+  expiresInSeconds: number = 300
+): Promise<string> {
+  const supabase = createAdminClient()
+  
+  const { data, error } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .createSignedUrl(path, expiresInSeconds)
+
+  if (error) {
+    throw new Error(`Failed to generate signed URL: ${error.message}`)
+  }
+
+  if (!data?.signedUrl) {
+    throw new Error('No signed URL returned from storage')
+  }
+
+  return data.signedUrl
+}
+

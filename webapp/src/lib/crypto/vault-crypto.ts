@@ -382,3 +382,69 @@ export async function deriveWrapKeyFromVendorSecret(
   )
 }
 
+/**
+ * Unwrap LSK with vendor secret-derived wrapping key
+ * Used in Step 4 for vendor access: decrypt LSK using VS-derived wrap key
+ * This is the inverse of wrapLskWithVendorSecret()
+ */
+export async function unwrapLskWithVendorSecret(
+  encryptedLsk: EncryptedDek,
+  vendorSecretBytes: Uint8Array,
+  salt: Uint8Array
+): Promise<Uint8Array> {
+  // Derive wrapping key from VS
+  const wrapKey = await deriveWrapKeyFromVendorSecret(vendorSecretBytes, salt)
+
+  // Combine encrypted LSK + auth tag
+  const encryptedWithTag = new Uint8Array(encryptedLsk.encryptedDek.length + encryptedLsk.authTag.length)
+  encryptedWithTag.set(encryptedLsk.encryptedDek)
+  encryptedWithTag.set(encryptedLsk.authTag, encryptedLsk.encryptedDek.length)
+
+  // Decrypt LSK
+  const lsk = await crypto.subtle.decrypt(
+    {
+      name: 'AES-GCM',
+      iv: normalizeUint8Array(encryptedLsk.nonce),
+      tagLength: 128,
+    },
+    wrapKey,
+    encryptedWithTag
+  )
+
+  return new Uint8Array(lsk)
+}
+
+/**
+ * Unwrap DEK with LSK using AES-256-GCM
+ * Used in Step 4 for vendor access: decrypt DEK using LSK (opposite of wrapDekWithLsk)
+ */
+export async function unwrapDekWithLsk(
+  encryptedDek: EncryptedDek,
+  lsk: Uint8Array
+): Promise<Uint8Array> {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    normalizeUint8Array(lsk),
+    { name: 'AES-GCM' },
+    false,
+    ['decrypt']
+  )
+
+  // Combine encrypted DEK + auth tag
+  const encryptedWithTag = new Uint8Array(encryptedDek.encryptedDek.length + encryptedDek.authTag.length)
+  encryptedWithTag.set(encryptedDek.encryptedDek)
+  encryptedWithTag.set(encryptedDek.authTag, encryptedDek.encryptedDek.length)
+
+  const dek = await crypto.subtle.decrypt(
+    {
+      name: 'AES-GCM',
+      iv: normalizeUint8Array(encryptedDek.nonce),
+      tagLength: 128,
+    },
+    key,
+    encryptedWithTag
+  )
+
+  return new Uint8Array(dek)
+}
+

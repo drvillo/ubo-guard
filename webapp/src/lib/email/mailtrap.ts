@@ -151,6 +151,74 @@ If you did not expect this email, please contact the sender or ignore this messa
   }
 }
 
+export interface VendorOtpEmailParams {
+  to: string
+  otp: string
+  vendorLabel: string
+  linkUrl: string
+}
+
+/**
+ * Send vendor OTP email
+ * Per Step 4: email contains OTP code, vendor label, link URL, and security instructions
+ */
+export async function sendVendorOtpEmail(params: VendorOtpEmailParams): Promise<void> {
+  const { to, otp, vendorLabel, linkUrl } = params
+
+  const mailOptions = {
+    from: mailtrapFromEmail,
+    to,
+    subject: `Your access code for ${vendorLabel}`,
+    html: `
+      <h2>Document Access Verification</h2>
+      <p>You have requested access to documents shared by <strong>${vendorLabel}</strong>.</p>
+      
+      <h3>Your Verification Code</h3>
+      <p style="font-size: 2em; font-weight: bold; letter-spacing: 0.2em; color: #1976d2; font-family: monospace; background: #f5f5f5; padding: 1em; border-radius: 8px; text-align: center;">${otp}</p>
+      
+      <p><strong>This code expires in 10 minutes.</strong></p>
+      
+      <h3>Next Steps</h3>
+      <ol>
+        <li>Go to: <a href="${linkUrl}">${linkUrl}</a></li>
+        <li>Enter your email address</li>
+        <li>Enter the verification code shown above</li>
+        <li>Enter your vendor secret (sent separately)</li>
+        <li>View or download the shared documents</li>
+      </ol>
+      
+      <h3>Security Warning</h3>
+      <p style="color: #d32f2f; font-weight: bold;">⚠️ DO NOT SHARE THIS CODE</p>
+      <p>This verification code is for your use only. If you did not request this code, please ignore this email.</p>
+    `,
+    text: `
+Document Access Verification
+
+You have requested access to documents shared by ${vendorLabel}.
+
+Your Verification Code: ${otp}
+This code expires in 10 minutes.
+
+Next Steps:
+1. Go to: ${linkUrl}
+2. Enter your email address
+3. Enter the verification code shown above
+4. Enter your vendor secret (sent separately)
+5. View or download the shared documents
+
+SECURITY WARNING: DO NOT SHARE THIS CODE
+This verification code is for your use only. If you did not request this code, please ignore this email.
+    `,
+  }
+
+  try {
+    await transporter.sendMail(mailOptions)
+  } catch (error) {
+    console.error('Failed to send vendor OTP email:', error)
+    throw new Error('Failed to send vendor OTP email')
+  }
+}
+
 /**
  * Verify email service configuration
  */

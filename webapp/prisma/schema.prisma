@@ -2,6 +2,7 @@
 // Step 1: Owner vault + encryption + upload/list/replace/download
 // Step 2: Team invites + delegate role + share requests
 // Step 3: Owner approval + share links + vendor secret delivery
+// Step 4: Vendor access with OTP and vendor secret
 
 generator client {
   provider = "prisma-client-js"
@@ -188,6 +189,7 @@ model ShareLink {
   shareRequest          ShareRequest?      @relation(fields: [shareRequestId], references: [id])
   documents             ShareLinkDocument[]
   auditEvents           AuditEvent[]
+  otpChallenges         OtpChallenge[]
 
   @@map("share_links")
 }
@@ -220,6 +222,9 @@ enum AuditEventType {
   share_request_cancelled
   link_created
   link_revoked
+  otp_sent
+  otp_verified
+  access_denied
 }
 
 // Audit actor types
@@ -227,6 +232,7 @@ enum AuditActorType {
   owner
   delegate
   system
+  vendor
 }
 
 // Audit events (append-only log)
@@ -248,5 +254,23 @@ model AuditEvent {
   shareLink           ShareLink?   @relation(fields: [linkId], references: [id])
 
   @@map("audit_events")
+}
+
+// OTP challenges for vendor access
+model OtpChallenge {
+  id              String    @id @default(cuid())
+  shareLinkId     String    @map("share_link_id")
+  vendorEmailHash String    @map("vendor_email_hash")
+  emailSalt       String    @map("email_salt")
+  otpHash         String    @map("otp_hash")
+  otpSalt         String    @map("otp_salt")
+  expiresAt       DateTime  @map("expires_at")
+  attempts        Int       @default(0)
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  shareLink       ShareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+
+  @@index([shareLinkId, vendorEmailHash])
+  @@map("otp_challenges")
 }
 
