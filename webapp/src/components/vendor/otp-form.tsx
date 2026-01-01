@@ -1,19 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface OtpFormProps {
   token: string
   onVerified: () => void
+  onStepChange?: (step: 'email' | 'otp') => void
 }
 
-export function OtpForm({ token, onVerified }: OtpFormProps) {
+export function OtpForm({ token, onVerified, onStepChange }: OtpFormProps) {
   const [email, setEmail] = useState('')
   const [otp, setOtp] = useState('')
   const [step, setStep] = useState<'email' | 'otp'>('email')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+
+  // Notify parent of step changes
+  useEffect(() => {
+    onStepChange?.(step)
+  }, [step, onStepChange])
 
   async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault()
@@ -41,6 +47,7 @@ export function OtpForm({ token, onVerified }: OtpFormProps) {
 
       setMessage('Verification code sent to your email. Please check your inbox.')
       setStep('otp')
+      onStepChange?.('otp')
     } catch (err: any) {
       setError(err.message || 'Failed to send verification code')
     } finally {
@@ -83,9 +90,6 @@ export function OtpForm({ token, onVerified }: OtpFormProps) {
   if (step === 'email') {
     return (
       <div>
-        <h2 className="mb-4 text-xl font-semibold text-black dark:text-zinc-50">
-          Step 1: Enter Your Email
-        </h2>
         <form onSubmit={handleSendOtp} className="space-y-4">
           {error && (
             <div className="rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-400">
@@ -128,9 +132,6 @@ export function OtpForm({ token, onVerified }: OtpFormProps) {
 
   return (
     <div>
-      <h2 className="mb-4 text-xl font-semibold text-black dark:text-zinc-50">
-        Step 2: Enter Verification Code
-      </h2>
       <form onSubmit={handleVerifyOtp} className="space-y-4">
         {error && (
           <div className="rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-400">
@@ -171,6 +172,7 @@ export function OtpForm({ token, onVerified }: OtpFormProps) {
             type="button"
             onClick={() => {
               setStep('email')
+              onStepChange?.('email')
               setOtp('')
               setError(null)
               setMessage(null)

@@ -221,46 +221,65 @@ export async function decryptDocumentForVendor(
   lsk: Uint8Array
 ): Promise<Uint8Array> {
   // Decode base64 strings
-  const ciphertextWithMetadata = base64ToUint8Array(ciphertextBase64)
-  const encryptedDekForLinkWithAuthTag = base64ToUint8Array(encryptedDekForLinkBase64)
-  const dekForLinkNonce = base64ToUint8Array(dekForLinkNonceBase64)
+  let ciphertextWithMetadata: Uint8Array
+  let encryptedDekForLinkWithAuthTag: Uint8Array
+  let dekForLinkNonce: Uint8Array
+  try {
+    ciphertextWithMetadata = base64ToUint8Array(ciphertextBase64)
+    encryptedDekForLinkWithAuthTag = base64ToUint8Array(encryptedDekForLinkBase64)
+    dekForLinkNonce = base64ToUint8Array(dekForLinkNonceBase64)
+  } catch (err: any) {
+    throw err
+  }
 
   // Extract encrypted DEK components
-  // Format: [encryptedDek (32 bytes)][authTag (16 bytes)]
-  // Nonce is stored separately as dekForLinkNonce
+  // Format: [encryptedDek (32 bytes)][nonce (12 bytes)][authTag (16 bytes)]
+  // Note: nonce is also stored separately as dekForLinkNonce, but it's included in the blob too
+  const encryptedDekLength = 32
+  const nonceLength = 12
   const authTagLength = 16
-  const encryptedDek = encryptedDekForLinkWithAuthTag.slice(0, -authTagLength)
+  const encryptedDek = encryptedDekForLinkWithAuthTag.slice(0, encryptedDekLength)
   const dekAuthTag = encryptedDekForLinkWithAuthTag.slice(-authTagLength)
 
   // Unwrap DEK with LSK
-  const dek = await unwrapDekWithLsk(
-    {
-      encryptedDek,
-      nonce: dekForLinkNonce,
-      authTag: dekAuthTag,
-    },
-    lsk
-  )
+  let dek: Uint8Array
+  try {
+    dek = await unwrapDekWithLsk(
+      {
+        encryptedDek,
+        nonce: dekForLinkNonce,
+        authTag: dekAuthTag,
+      },
+      lsk
+    )
+  } catch (err: any) {
+    throw err
+  }
 
   // Extract document components
   // Format: [ciphertext][nonce (12 bytes)][authTag (16 bytes)]
-  const nonceLength = 12
-  const ciphertextOnly = ciphertextWithMetadata.slice(0, -(nonceLength + authTagLength))
+  const docNonceLength = 12
+  const ciphertextOnly = ciphertextWithMetadata.slice(0, -(docNonceLength + authTagLength))
   const docNonce = ciphertextWithMetadata.slice(
-    -(nonceLength + authTagLength),
+    -(docNonceLength + authTagLength),
     -authTagLength
   )
   const docAuthTag = ciphertextWithMetadata.slice(-authTagLength)
 
   // Decrypt document
-  const plaintext = await decryptDocument(
-    {
-      ciphertext: ciphertextOnly,
-      nonce: docNonce,
-      authTag: docAuthTag,
-    },
-    dek
-  )
+  let plaintext: Uint8Array
+  try {
+    plaintext = await decryptDocument(
+      {
+        ciphertext: ciphertextOnly,
+        nonce: docNonce,
+        authTag: docAuthTag,
+      },
+      dek
+    )
+  } catch (err: any) {
+    throw err
+  }
 
   return plaintext
 }

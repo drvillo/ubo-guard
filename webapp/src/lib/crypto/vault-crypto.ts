@@ -241,11 +241,15 @@ export async function computeChecksum(data: Uint8Array): Promise<string> {
 export function uint8ArrayToBase64(bytes: Uint8Array): string {
   // Browser-compatible base64 encoding
   // Handle large arrays by chunking to avoid stack overflow
+  // Avoid spread operator which can fail for large chunks
   let binary = ''
   const chunkSize = 8192
   for (let i = 0; i < bytes.length; i += chunkSize) {
     const chunk = bytes.slice(i, i + chunkSize)
-    binary += String.fromCharCode(...chunk)
+    // Iterate through chunk instead of using spread operator
+    for (let j = 0; j < chunk.length; j++) {
+      binary += String.fromCharCode(chunk[j])
+    }
   }
   return btoa(binary)
 }

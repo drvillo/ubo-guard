@@ -71,9 +71,6 @@ export function SecretForm({
 
   return (
     <div>
-      <h2 className="mb-4 text-xl font-semibold text-black dark:text-zinc-50">
-        Step 3: Enter Vendor Secret
-      </h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div className="rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-400">

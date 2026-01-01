@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { decryptDocumentForVendor } from '@/lib/crypto/client-crypto'
+import { uint8ArrayToBase64 } from '@/lib/crypto/vault-crypto'
 
 interface Document {
   documentId: string
@@ -46,16 +47,16 @@ export function DocumentList({ token, lsk }: DocumentListProps) {
     }
   }
 
-  async function handleDownload(document: Document) {
+  async function handleDownload(doc: Document) {
     if (downloadingDocId) return
 
-    setDownloadingDocId(document.documentId)
+    setDownloadingDocId(doc.documentId)
     setError(null)
 
     try {
       // Get signed URL for ciphertext
       const urlResponse = await fetch(
-        `/api/vendor/${token}/ciphertext-url?docId=${document.documentId}`
+        `/api/vendor/${token}/ciphertext-url?docId=${doc.documentId}`
       )
 
       if (!urlResponse.ok) {
@@ -75,33 +76,46 @@ export function DocumentList({ token, lsk }: DocumentListProps) {
       const ciphertextArrayBuffer = await ciphertextBlob.arrayBuffer()
       const ciphertext = new Uint8Array(ciphertextArrayBuffer)
 
-      // Convert to base64 for decryption (handle large arrays by chunking)
-      let binary = ''
-      const chunkSize = 8192
-      for (let i = 0; i < ciphertext.length; i += chunkSize) {
-        const chunk = ciphertext.slice(i, i + chunkSize)
-        binary += String.fromCharCode(...chunk)
+      // Convert to base64 for decryption using utility function
+      let ciphertextBase64: string
+      try {
+        ciphertextBase64 = uint8ArrayToBase64(ciphertext)
+      } catch (base64Err: any) {
+        throw new Error(`Base64 conversion failed: ${base64Err.message || 'Unknown error'}`)
       }
-      const ciphertextBase64 = btoa(binary)
 
       // Decrypt document
-      const plaintext = await decryptDocumentForVendor(
-        ciphertextBase64,
-        document.encryptedDekForLink,
-        document.dekForLinkNonce,
-        lsk
-      )
+      let plaintext: Uint8Array
+      try {
+        plaintext = await decryptDocumentForVendor(
+          ciphertextBase64,
+          doc.encryptedDekForLink,
+          doc.dekForLinkNonce,
+          lsk
+        )
+      } catch (decryptErr: any) {
+        throw new Error(`Decryption failed: ${decryptErr.message || 'Unknown error'}`)
+      }
+
+      // Validate plaintext
+      if (!plaintext || plaintext.length === 0) {
+        throw new Error('Decryption failed: empty plaintext')
+      }
 
       // Create download link
-      const blob = new Blob([plaintext], { type: 'application/octet-stream' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = document.filename
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      try {
+        const blob = new Blob([plaintext as BlobPart], { type: 'application/octet-stream' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = doc.filename
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      } catch (blobError: any) {
+        throw new Error(`Failed to create download: ${blobError.message || 'Unknown error'}`)
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to download document')
     } finally {
@@ -118,9 +132,6 @@ export function DocumentList({ token, lsk }: DocumentListProps) {
   if (loading) {
     return (
       <div>
-        <h2 className="mb-4 text-xl font-semibold text-black dark:text-zinc-50">
-          Documents
-        </h2>
         <p className="text-zinc-600 dark:text-zinc-400">Loading documents...</p>
       </div>
     )
@@ -129,9 +140,6 @@ export function DocumentList({ token, lsk }: DocumentListProps) {
   if (error) {
     return (
       <div>
-        <h2 className="mb-4 text-xl font-semibold text-black dark:text-zinc-50">
-          Documents
-        </h2>
         <div className="rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-400">
           {error}
         </div>
@@ -142,9 +150,6 @@ export function DocumentList({ token, lsk }: DocumentListProps) {
   if (documents.length === 0) {
     return (
       <div>
-        <h2 className="mb-4 text-xl font-semibold text-black dark:text-zinc-50">
-          Documents
-        </h2>
         <p className="text-zinc-600 dark:text-zinc-400">No documents available.</p>
       </div>
     )
@@ -152,9 +157,6 @@ export function DocumentList({ token, lsk }: DocumentListProps) {
 
   return (
     <div>
-      <h2 className="mb-4 text-xl font-semibold text-black dark:text-zinc-50">
-        Documents
-      </h2>
       {error && (
         <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-400">
           {error}
