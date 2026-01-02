@@ -86,6 +86,7 @@ describe('/api/vendor/[token]/otp/send', () => {
     id: 'link-123',
     vaultId: 'vault-123',
     vendorLabel: 'Test Vendor',
+    vendorEmail: 'vendor@example.com',
     status: 'approved',
     expiresAt: new Date(Date.now() + 86400000),
     revokedAt: null,
@@ -284,6 +285,68 @@ describe('/api/vendor/[token]/otp/send', () => {
 
       expect(response.status).toBe(403)
       expect(data.error).toBe('Share link is not approved')
+    })
+
+    it('should return 403 when email does not match vendor email', async () => {
+      const token = 'valid-token'
+      ;(mockedPrisma.shareLink.findFirst as any).mockResolvedValue(
+        createValidShareLink({ vendorEmail: 'correct@example.com' })
+      )
+
+      const request = createRequest(token, { email: 'wrong@example.com' })
+      const params = Promise.resolve({ token })
+
+      const response = await POST(request, { params })
+      const data = await response.json()
+
+      expect(response.status).toBe(403)
+      expect(data.error).toBe('Email address does not match the vendor email for this share link')
+      expect(mockedLogAuditEvent).toHaveBeenCalledWith({
+        vaultId: 'vault-123',
+        actorType: 'vendor',
+        actorId: expect.any(String),
+        eventType: 'access_denied',
+        linkId: 'link-123',
+      })
+      // Should not create OTP challenge or send email
+      expect(mockedPrisma.otpChallenge.create).not.toHaveBeenCalled()
+      expect(mockedSendVendorOtpEmail).not.toHaveBeenCalled()
+    })
+
+    it('should succeed when email case differs but matches after normalization', async () => {
+      const token = 'valid-token'
+      ;(mockedPrisma.shareLink.findFirst as any).mockResolvedValue(
+        createValidShareLink({ vendorEmail: 'Vendor@Example.COM' })
+      )
+      ;(mockedPrisma.otpChallenge.create as any).mockResolvedValue({ id: 'challenge-123' })
+
+      const request = createRequest(token, { email: 'vendor@example.com' })
+      const params = Promise.resolve({ token })
+
+      const response = await POST(request, { params })
+      const data = await response.json()
+
+      // Should succeed because both are normalized to lowercase
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(mockedPrisma.otpChallenge.create).toHaveBeenCalled()
+      expect(mockedSendVendorOtpEmail).toHaveBeenCalled()
+    })
+
+    it('should return 403 when email with whitespace does not match vendor email', async () => {
+      const token = 'valid-token'
+      ;(mockedPrisma.shareLink.findFirst as any).mockResolvedValue(
+        createValidShareLink({ vendorEmail: 'vendor@example.com' })
+      )
+
+      const request = createRequest(token, { email: 'different@example.com' })
+      const params = Promise.resolve({ token })
+
+      const response = await POST(request, { params })
+      const data = await response.json()
+
+      expect(response.status).toBe(403)
+      expect(data.error).toBe('Email address does not match the vendor email for this share link')
     })
   })
 

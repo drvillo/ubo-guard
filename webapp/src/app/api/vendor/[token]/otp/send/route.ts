@@ -48,6 +48,25 @@ export async function POST(
       return NextResponse.json({ error: 'Share link is not approved' }, { status: 403 })
     }
 
+    // Validate email matches the vendor email for this share link
+    const normalizedVendorEmail = shareLink.vendorEmail.toLowerCase().trim()
+    if (normalizedEmail !== normalizedVendorEmail) {
+      // Log audit event for access denied
+      const emailSalt = generateEmailSalt()
+      const vendorEmailHash = hashVendorEmailWithSalt(normalizedEmail, emailSalt)
+      await logAuditEvent({
+        vaultId: shareLink.vaultId,
+        actorType: 'vendor',
+        actorId: vendorEmailHash,
+        eventType: 'access_denied',
+        linkId: shareLink.id,
+      })
+      return NextResponse.json(
+        { error: 'Email address does not match any share request' },
+        { status: 403 }
+      )
+    }
+
     // Generate OTP and salts
     const otp = generateOtp()
     const otpSalt = generateSalt()

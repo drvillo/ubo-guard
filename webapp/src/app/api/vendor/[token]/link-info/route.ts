@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { hashToken } from '@/lib/crypto/token-hash'
+import { validateVendorSession } from '@/lib/auth/vendor-session'
+import { headers } from 'next/headers'
 
 export async function GET(
   request: NextRequest,
@@ -42,6 +44,12 @@ export async function GET(
       return NextResponse.json({ error: 'Share link has been revoked' }, { status: 410 })
     }
 
+    // Check for existing vendor session
+    const headersList = await headers()
+    const userAgent = headersList.get('user-agent')
+    const session = await validateVendorSession(userAgent)
+    const hasValidSession = session !== null && session.shareLinkId === shareLink.id
+
     // Return link info with crypto metadata (no secrets)
     return NextResponse.json({
       id: shareLink.id,
@@ -56,6 +64,8 @@ export async function GET(
       encryptedLskForVendor: shareLink.encryptedLskForVendor,
       lskSalt: shareLink.lskSalt,
       lskNonce: shareLink.lskNonce,
+      // Session status
+      hasValidSession,
     })
   } catch (error: any) {
     console.error('Error fetching link info:', error)

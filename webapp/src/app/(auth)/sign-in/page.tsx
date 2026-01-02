@@ -33,7 +33,18 @@ export default function SignInPage() {
 
       setMessage('Check your email for the login link!')
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'An error occurred')
+      // Check if it's the email sending error from Supabase
+      if (error instanceof Error && error.message.includes('Error sending magic link email')) {
+        setMessage(
+          'Unable to send magic link email. Please configure SMTP settings in your Supabase project:\n' +
+          '1. Go to your Supabase Dashboard → Project Settings → Auth\n' +
+          '2. Scroll to "SMTP Settings" section\n' +
+          '3. Configure SMTP (you can use Mailtrap for development)\n' +
+          '4. Save and try again'
+        )
+      } else {
+        setMessage(error instanceof Error ? error.message : 'An error occurred')
+      }
     } finally {
       setLoading(false)
     }

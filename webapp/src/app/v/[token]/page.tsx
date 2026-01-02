@@ -20,6 +20,7 @@ interface LinkInfo {
   encryptedLskForVendor: string | null
   lskSalt: string | null
   lskNonce: string | null
+  hasValidSession?: boolean
 }
 
 export default function VendorPage({ params }: { params: Promise<{ token: string }> }) {
@@ -34,8 +35,9 @@ export default function VendorPage({ params }: { params: Promise<{ token: string
   useEffect(() => {
     async function loadToken() {
       const resolvedParams = await params
-      setToken(resolvedParams.token)
-      await loadLinkInfo(resolvedParams.token)
+      const linkToken = resolvedParams.token
+      setToken(linkToken)
+      await loadLinkInfo(linkToken)
     }
     loadToken()
   }, [params])
@@ -48,6 +50,8 @@ export default function VendorPage({ params }: { params: Promise<{ token: string
         const data = await response.json()
         if (response.status === 404) {
           setLinkStatus('invalid')
+          // Clear stored LSK if link is invalid
+          sessionStorage.removeItem(`vendor_lsk_${token}`)
           return
         }
         if (response.status === 410) {
@@ -56,6 +60,8 @@ export default function VendorPage({ params }: { params: Promise<{ token: string
           } else if (data.error?.includes('revoked')) {
             setLinkStatus('revoked')
           }
+          // Clear stored LSK if link is expired or revoked
+          sessionStorage.removeItem(`vendor_lsk_${token}`)
           return
         }
         throw new Error(data.error || 'Failed to load link info')
@@ -66,10 +72,30 @@ export default function VendorPage({ params }: { params: Promise<{ token: string
 
       if (info.status === 'pending') {
         setLinkStatus('pending')
+        // Clear stored LSK if link is pending
+        sessionStorage.removeItem(`vendor_lsk_${token}`)
       } else if (info.status === 'approved') {
         setLinkStatus('approved')
+        // If there's a valid session, skip OTP verification
+        if (info.hasValidSession) {
+          setOtpVerified(true)
+          // Try to restore LSK from sessionStorage
+          try {
+            const storedLsk = sessionStorage.getItem(`vendor_lsk_${token}`)
+            if (storedLsk) {
+              // Convert base64 string back to Uint8Array
+              const lskBytes = Uint8Array.from(atob(storedLsk), c => c.charCodeAt(0))
+              setLsk(lskBytes)
+            }
+          } catch (err) {
+            // If restoration fails, user will need to enter vendor secret again
+            console.error('Failed to restore LSK from sessionStorage:', err)
+          }
+        }
       } else {
         setLinkStatus('invalid')
+        // Clear stored LSK if link status is invalid
+        sessionStorage.removeItem(`vendor_lsk_${token}`)
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load link information')
@@ -83,6 +109,14 @@ export default function VendorPage({ params }: { params: Promise<{ token: string
 
   function handleLskDecrypted(decryptedLsk: Uint8Array) {
     setLsk(decryptedLsk)
+    // Store LSK in sessionStorage for persistence across page navigations
+    try {
+      const lskBase64 = btoa(String.fromCharCode(...decryptedLsk))
+      sessionStorage.setItem(`vendor_lsk_${token}`, lskBase64)
+    } catch (err) {
+      console.error('Failed to store LSK in sessionStorage:', err)
+      // Continue anyway - LSK is still in state
+    }
   }
 
   if (linkStatus === 'loading') {

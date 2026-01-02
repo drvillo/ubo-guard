@@ -356,6 +356,24 @@ pnpm db:generate
 
 ---
 
+#### Step 5: Test Wrong Vendor Email
+
+1. Get a share link URL and note the vendor email it was sent to (from approval email or database)
+2. On vendor landing page, enter a different email address (e.g., if link was sent to `vendor@example.com`, enter `wrong@example.com`)
+3. Click "Send Verification Code"
+
+**Expected**:
+- Error message: "Email address does not match the vendor email for this share link"
+- OTP not sent
+- No OTP email received
+- Access denied audit event logged (check database)
+
+**Actual**: 
+
+**Pass/Fail**: 
+
+---
+
 ### Test Scenario 4: Vendor Secret Error Cases
 
 #### Step 1: Test Invalid Vendor Secret Format
