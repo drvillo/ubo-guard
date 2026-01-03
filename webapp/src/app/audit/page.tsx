@@ -11,6 +11,8 @@ interface AuditEvent {
   actorType: 'owner' | 'delegate' | 'system' | 'vendor'
   eventType: string
   docType: string | null
+  watermarkReferenceId: string | null
+  linkId: string | null
   createdAt: string
 }
 

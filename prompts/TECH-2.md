@@ -41,9 +41,7 @@ A fully “provider cannot read even during sharing” implementation with only 
   - WebCrypto for AES-GCM, random bytes, HKDF
   - Argon2id (WASM) for password-based key derivation
 - **Watermarking**:
-  - pdf.js for rendering PDFs for viewing
-  - pdf-lib to generate watermarked PDFs for download
-  - Canvas-based watermark overlay for images
+  - Canvas-based watermark overlay for images (MVP scope: images only, PDF deferred)
 
 ## 2.2 Backend
 - **Runtime**: Node.js (Next.js Route Handlers)
@@ -215,15 +213,20 @@ For every vendor view/download:
   - unique reference ID tied to audit events
 - Apply watermark per recipient session.
 
-### 6.2 Watermark strategy
+### 6.2 Watermark strategy (MVP: images only)
 - **View**:
-  - PDFs: render in-browser using pdf.js; apply a repeating watermark overlay layer in the viewer.
-  - Images: draw to Canvas and render watermark overlay.
+  - Images: draw to Canvas and render watermark overlay in a modal/viewer.
 - **Download**:
-  - PDFs: generate a new PDF client-side using pdf-lib by overlaying watermark text across pages.
-  - Images: generate a new watermarked image via Canvas and download.
+  - Images: generate a new watermarked image via Canvas (`toBlob`) and trigger download.
+- **PDF support**: Deferred to post-MVP. For now, PDFs are downloaded without watermark or blocked.
 
-### 6.3 Anti-removal posture (MVP)
+### 6.3 Watermark rendering
+- Use Canvas 2D API to draw semi-transparent text at 45° angle
+- Text color: white with dark stroke (or vice versa) for visibility on varied backgrounds
+- Opacity: ~30% to avoid obscuring document content
+- Repeat pattern: tile watermark text across entire image
+
+### 6.4 Anti-removal posture (MVP)
 Watermarking discourages reuse but cannot prevent screenshots or deliberate removal. UI copy should set expectations.
 
 ## 7. Audit Log

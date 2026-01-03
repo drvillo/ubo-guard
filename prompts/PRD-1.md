@@ -116,12 +116,13 @@ Audit log fields (minimum):
 
 ### 7.6 Recipient/session-specific watermarking
 - Apply watermark on **every vendor view/download** for documents shared through a link.
+- **MVP scope**: Images only (JPEG, PNG, WebP). PDF watermarking deferred to post-MVP.
 - Watermark content must include:
   - Vendor label
   - Date/time of access
   - Purpose/notes (optional)
   - **Unique reference ID** (tie it to audit events)
-- Watermark must be difficult to remove casually (overlay across page/image) **without jeopardizing the readability of the original document**
+- Watermark must be difficult to remove casually (overlay across image) **without jeopardizing the readability of the original document**
 
 ## 8. Security & trust model (MVP)
 ### 8.1 Core promise
@@ -169,10 +170,8 @@ Vendors must ultimately see plaintext. Choose one approach early:
 - Vendor secret format (MVP decision): **Crockford Base32**, displayed as `AAAA-BBBB-CCCC-DDDD-EEEE-X`
   - Payload: 20 chars (~100 bits); Checksum: 1 char computed as **mod-32** over payload Base32 digits (typo detection only)
   - Input handling: strip separators/spaces and uppercase; **reject** characters outside the Crockford alphabet (no normalization)
-  - Issuance: “one-time” = single issuance / not retrievable again; practical enforcement is via link expiry + revocation
+  - Issuance: "one-time" = single issuance / not retrievable again; practical enforcement is via link expiry + revocation
 - How quickly must owners be able to approve share requests (UX + notification requirements)?
-- How should watermarking be implemented for:
-  - PDFs (overlay per page)
-  - Images (overlay across the image)
+- Watermarking implementation (MVP decision): **Images only** using Canvas-based overlay
 
 

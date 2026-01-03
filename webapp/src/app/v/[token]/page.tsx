@@ -257,7 +257,12 @@ export default function VendorPage({ params }: { params: Promise<{ token: string
               </p>
             )}
             <ProgressBar currentStep={4} />
-            <DocumentList token={token} lsk={lsk} />
+            <DocumentList
+              token={token}
+              lsk={lsk}
+              vendorLabel={linkInfo.vendorLabel}
+              purposeNotes={linkInfo.purposeNotes}
+            />
           </div>
         )}
       </div>

@@ -8,6 +8,7 @@ import { GET } from '@/app/api/vendor/[token]/link-info/route'
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { hashToken } from '@/lib/crypto/token-hash'
+import { validateVendorSession } from '@/lib/auth/vendor-session'
 
 vi.mock('@/lib/db/prisma', () => ({
   prisma: {
@@ -21,13 +22,25 @@ vi.mock('@/lib/crypto/token-hash', () => ({
   hashToken: vi.fn(),
 }))
 
+vi.mock('@/lib/auth/vendor-session', () => ({
+  validateVendorSession: vi.fn(),
+}))
+
+vi.mock('next/headers', () => ({
+  headers: vi.fn(() => Promise.resolve({
+    get: vi.fn((name: string) => name === 'user-agent' ? 'Test Browser' : null),
+  })),
+}))
+
 const mockedPrisma = vi.mocked(prisma)
 const mockedHashToken = vi.mocked(hashToken)
+const mockedValidateVendorSession = vi.mocked(validateVendorSession)
 
 describe('/api/vendor/[token]/link-info', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockedHashToken.mockReturnValue('hashed-token')
+    mockedValidateVendorSession.mockResolvedValue(null)
   })
 
   describe('GET - Valid link scenarios', () => {

@@ -62,7 +62,7 @@ export async function POST(
         linkId: shareLink.id,
       })
       return NextResponse.json(
-        { error: 'Email address does not match any share request' },
+        { error: 'Email address does not match the vendor email for this share link' },
         { status: 403 }
       )
     }

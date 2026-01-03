@@ -3,6 +3,7 @@
 // Step 2: Team invites + delegate role + share requests
 // Step 3: Owner approval + share links + vendor secret delivery
 // Step 4: Vendor access with OTP and vendor secret
+// Step 5: Watermarking on vendor view/download + audit log extensions
 
 generator client {
   provider = "prisma-client-js"
@@ -224,6 +225,8 @@ enum AuditEventType {
   otp_sent
   otp_verified
   access_denied
+  doc_viewed      // Step 5: Vendor viewed a document (with watermark)
+  doc_downloaded  // Step 5: Vendor downloaded a document (with watermark)
 }
 
 // Audit actor types
